@@ -1,0 +1,6 @@
+all:
+	git add .
+	git commit -m "Updated some files"
+	git push
+
+.phony: all

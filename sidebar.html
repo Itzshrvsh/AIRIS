@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background: rgba(0,0,50,0.9);
+      color: white;
+      font-family: sans-serif;
+      margin: 10px;
+    }
+    #text {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    button {
+      display: block;
+      margin: 4px 0;
+      padding: 5px 10px;
+      width: 90%;
+    }
+  </style>
+</head>
+<body>
+  <div id="text"></div>
+  <button onclick="askAI()">Ask AI</button>
+  <button onclick="openGoogle()">Search Google</button>
+  <button onclick="window.close()">Close Now</button>
+
+  <script>
+    const { ipcRenderer, shell } = require('electron');
+    const { exec } = require('child_process');
+    // Show copied text when received
+    ipcRenderer.on('copied-text', (event, text) => {
+      document.getElementById('text').innerText = text;
+      window.copied = text; // Store for later
+    });
+  
+    async function askAI() {
+      const copiedText = window.copied || '';
+      const response = await ipcRenderer.invoke('ask-ai', copiedText);
+      ipcRenderer.send('display-message', response);
+    }
+  
+    function openGoogle() {
+        const searchQuery = encodeURIComponent(window.copied);
+        const operaPath = `"C:/Users/itzsh/AppData/Local/Programs/Opera GX/opera.exe"`;
+
+        exec(`${operaPath} "https://www.google.com/search?q=${searchQuery}"`, (err) => {
+            if (err) {
+            console.error('Failed to open Opera:', err);
+            }
+        });
+    }
+  </script>
+  
+</body>
+</html>

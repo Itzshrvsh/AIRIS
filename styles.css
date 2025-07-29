@@ -1,0 +1,208 @@
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
+    font-size: 16px;
+    padding: 20px;
+    pointer-events: none; /* make everything non-clickable */
+  }
+  html {
+    background-color: transparent !important;
+  }
+
+
+
+
+
+    #app-wrapper, body {
+      pointer-events: none;
+    }
+    
+      #eyes {
+      display: flex;
+      justify-content: center;
+      margin-top: 150px;
+      gap: 40px;
+      transition: all 0.5s ease;
+    }
+
+  .eye {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+  }
+  .eyebg{
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    background-color: white;
+  }
+
+  .eye::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: 0;
+  width: 100%;
+  height: 160%;
+  background: linear-gradient(to bottom, rgba(255, 200, 100, 0.4), rgba(255, 120, 0, 0.2));
+  filter: blur(20px);
+  z-index: -1;
+}
+
+
+
+
+    .pupil {
+      width: 20px;
+      height: 20px;
+      background: black;
+      border-radius: 50%;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      transition: transform 0.3s ease;
+    }
+
+    .eyelid {
+      position: absolute;
+      width: 100px;
+      height: 50px;
+      top: 0;
+      left: 0;
+      border-top-left-radius: 100% 100%;
+      border-top-right-radius: 100% 100%;
+      background: rgba(0, 0, 0, 0.6);
+      transition: transform 0.4s ease;
+      transform: translateY(-100%); /* hidden */
+    }
+
+    .eyelid.closed {
+      transform: translateY(0); /* covers the eye */
+    }
+
+    .blink-eyelid .eyelid {
+      animation: eyelidBlink 0.3s ease-in-out;
+    }
+
+    @keyframes eyelidBlink {
+      0%   { top: -70%; }
+      50%  { top: 0%; }
+      100% { top: -70%; }
+    }
+
+    @keyframes wink {
+      0%   { transform: scaleY(1); }
+      50%  { transform: scaleY(0.1); }
+      100% { transform: scaleY(1); }
+    }
+
+    .eye.wink-eyelid {
+      animation: wink 0.3s ease-in-out;
+    }
+
+    .hidden-eyes {
+      transform: translateY(-100px);
+    }
+
+
+
+    
+    #ai-message-box{
+      position:absolute;
+      top:150px; 
+      left:50%; 
+      transform:translateX(-50%);
+      background:#111; 
+      color:#0f0; 
+      padding:10px 20px; 
+      border-radius:12px;
+      font-family:monospace; 
+      font-size:16px; 
+      z-index:1000; 
+      display:none;
+      transition: opacity 0.5s ease;
+    }
+
+
+    .eye.blink {
+      animation: blink 0.3s ease-in-out;
+    }
+
+    #glass {
+      top: -26px;
+      left: 22px;
+      scale: 1.9;
+      color: #000000ea;
+    }
+
+
+    .hand {
+      position: absolute;
+      font-size: 2.5rem;
+      transition: ease-in 0.5s ease-in-out;
+      z-index: 998;
+    }
+
+    #left-hand {
+      left: -60px;
+      top: 24px;
+    }
+
+    #right-hand {
+      right: -60px;
+      top: 24px;
+    }
+
+
+    *:focus {
+      outline: none !important;
+    }
+
+
+    @keyframes blink {
+      0%, 100% {
+        transform: scaleY(1);
+      }
+      50% {
+        transform: scaleY(0.1);
+      }
+    }
+    .message-box {
+      background: rgba(30, 30, 30, 0.95);
+      color: #fff;
+      padding: 20px 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      font-size: 16px;
+      min-width: 300px;
+      max-width: 600px;
+      pointer-events: auto;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .message-box.hide {
+      opacity: 0;
+      transform: scale(0.95); /* Optional shrink effect */
+    }
+
+    .message-box::-moz-focus-inner {
+      border: 1px #000000;
+    }
+
+
+    @keyframes popup {
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+  

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ask MetaAI</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      height: 100vh;
+      background: transparent;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #inputBox {
+      width: 100%;
+      max-width: 600px;
+      height: 100px;
+      padding: 14px;
+      font-size: 18px;
+      color: #000;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+      resize: none;
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+      outline: none;
+    }
+
+    #askButton {
+      margin-top: 20px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 24px;
+      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+      background-size: 400%;
+      color: black;
+      cursor: pointer;
+      transition: all 0.3s ease-in-out;
+      position: relative;
+      z-index: 1;
+    }
+
+    #askButton:hover {
+      animation: pulseGlow 3s linear infinite;
+    }
+
+    @keyframes pulseGlow {
+      0% { background-position: 0%; }
+      100% { background-position: 400%; }
+    }
+
+    #loader {
+      display: none;
+      width: 160px;
+      height: 15px;
+      margin-top: 30px;
+      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+      background-size: 400%;
+      animation: loaderAnim 3s linear infinite;
+      border-radius: 100px;
+    }
+
+    @keyframes loaderAnim {
+      0% { background-position: 0%; }
+      100% { background-position: 400%; }
+    }
+  </style>
+</head>
+
+<body>
+  <textarea id="inputBox" placeholder="Ask MetaAI something smart..."></textarea>
+  <button id="askButton" onclick="askAI()">🚀 Ask MetaAI</button>
+  <div id="loader"></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    async function askAI() {
+      const inputText = document.getElementById("inputBox").value.trim();
+      if (!inputText) return;
+
+      const loader = document.getElementById("loader");
+      loader.style.display = "block";
+
+      const systemInstructions = `
+You are MetaAI — an elite, high-performance assistant for serious developers and thinkers.
+
+You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.
+
+Rules:
+1. Never apologize.
+2. Never add filler.
+3. Format clearly: use bullets, code, clarity.
+4. Respond like a senior engineer or domain pro.
+5. Never give half-assed answers.
+
+Reply like your output is being judged by legends.
+
+User: ${inputText}
+      `.trim();
+
+      const response = await ipcRenderer.invoke('ask-ai', systemInstructions);
+      console.log("AI Response:", response);
+
+      loader.style.display = "none";
+      ipcRenderer.send('show-sentiment-message', response);
+      ipcRenderer.send('show-glow-window');
+    }
+  </script>
+</body>
+</html>

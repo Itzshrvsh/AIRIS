@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Border Glow</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      pointer-events: none;
+    }
+  
+    .border-glow {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      transform-origin: center center;
+      animation: rippleZoom 5s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+    }
+  
+    .glow-edge {
+      position: absolute;
+      background: linear-gradient(
+        135deg,
+        #8511a1,      /* Deep graphite */
+        #4186ec,      /* Space black */
+        #ad47e9,      /* Slate gray */
+        #e0655c,      /* Calm violet */
+        #ff9a57,      /* Soft bluish lavender */
+        #bb7e2e,
+        #ffc38a,
+        #4101a7,
+        #58f9ff
+      );
+
+      background-size: 500% 500%;
+      animation: animateGlow 6s ease-in-out infinite;
+      filter: blur(10px); /* Subtle glow */
+      opacity: 0.3;
+    }
+  
+    .top, .bottom {
+      height: 20px;
+      width: 100%;
+      left: 0;
+    }
+  
+    .top { top: 0; }
+    .bottom { bottom: 0; }
+  
+    .left, .right {
+      width: 20px;
+      height: 100%;
+      top: 0;
+    }
+  
+    .left { left: 0; }
+    .right { right: 0; }
+  
+    @keyframes animateGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  
+    @keyframes rippleZoom {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      5% {
+        transform: scale(0.97); /* Ripple in */
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+  </style>
+  
+</head>
+<body>
+  <div class="border-glow">
+    <div class="glow-edge top"></div>
+    <div class="glow-edge bottom"></div>
+    <div class="glow-edge left"></div>
+    <div class="glow-edge right"></div>
+  </div>
+  
+</body>
+</html>
