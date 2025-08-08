@@ -68,6 +68,7 @@
       background-size: 400%;
       animation: loaderAnim 3s linear infinite;
       border-radius: 100px;
+      
     }
 
     @keyframes loaderAnim {
@@ -81,41 +82,88 @@
   <textarea id="inputBox" placeholder="Ask MetaAI something smart..."></textarea>
   <button id="askButton" onclick="askAI()">🚀 Ask MetaAI</button>
   <div id="loader"></div>
-
   <script>
     const { ipcRenderer } = require('electron');
-
+    const fs = require('fs');
+    const path = require('path');
+  
+    let personalization = null;
+  
+    const personalizationFile = path.join(__dirname, 'personalization.json');
+  
+    // Load personalization.json once on startup
+    function loadPersonalization() {
+      try {
+        const data = fs.readFileSync(personalizationFile, 'utf-8');
+        personalization = JSON.parse(data);
+  
+        // Initialize chatMemory array if not present
+        if (!Array.isArray(personalization.chatMemory)) {
+          personalization.chatMemory = [];
+        }
+        console.log("Loaded personalization.json with chatMemory length:", personalization.chatMemory.length);
+      } catch (err) {
+        console.error("Failed to load personalization.json:", err);
+        personalization = { systemInstructions: "", chatMemory: [] };
+      }
+    }
+  
+    // Save the entire personalization object (instructions + chatMemory) back to personalization.json
+    function savePersonalization() {
+      try {
+        fs.writeFileSync(personalizationFile, JSON.stringify(personalization, null, 2));
+        console.log("Saved personalization.json with chatMemory length:", personalization.chatMemory.length);
+      } catch (err) {
+        console.error("Failed to save personalization.json:", err);
+      }
+    }
+  
+    loadPersonalization();
+  
     async function askAI() {
       const inputText = document.getElementById("inputBox").value.trim();
       if (!inputText) return;
-
+  
       const loader = document.getElementById("loader");
       loader.style.display = "block";
-
-      const systemInstructions = `
-You are MetaAI — an elite, high-performance assistant for serious developers and thinkers.
-
-You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.
-
-Rules:
-1. Never apologize.
-2. Never add filler.
-3. Format clearly: use bullets, code, clarity.
-4. Respond like a senior engineer or domain pro.
-5. Never give half-assed answers.
-
-Reply like your output is being judged by legends.
-
-User: ${inputText}
-      `.trim();
-
-      const response = await ipcRenderer.invoke('ask-ai', systemInstructions);
+  
+      if (!personalization.systemInstructions) {
+        console.error("No instructions found in personalization.json");
+        loader.style.display = "none";
+        return;
+      }
+  
+      // Append user input to chat memory
+      personalization.chatMemory.push({ role: 'user', content: inputText });
+  
+      // Build chat history string from memory
+      const chatHistoryText = personalization.chatMemory.map(entry => {
+        const prefix = entry.role === 'user' ? 'User' : 'AIRIS';
+        return `${prefix}: ${entry.content}`;
+      }).join('\n');
+  
+      // Replace placeholder {{input}} with current user input
+      const baseInstructions = personalization.systemInstructions.replace("{{input}}", inputText);
+  
+      // Final prompt: system instructions + full chat history + AI reply prompt
+      const prompt = `${baseInstructions}\n\n${chatHistoryText}\nAIRIS:`;
+  
+      // Send prompt to backend AI via IPC
+      const response = await ipcRenderer.invoke('ask-ai', prompt);
       console.log("AI Response:", response);
-
+  
+      // Append AI response to chat memory and save
+      personalization.chatMemory.push({ role: 'assistant', content: response });
+      savePersonalization();
+  
       loader.style.display = "none";
       ipcRenderer.send('show-sentiment-message', response);
-      ipcRenderer.send('show-glow-window');
     }
   </script>
+  
+  
+
+  
+  
 </body>
 </html>
