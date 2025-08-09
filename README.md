@@ -1,114 +1,165 @@
-# -AIRIS-
-AIRIS is a powerful Electron-based desktop application that visually converts source code into abstract syntax trees (AST), allows drag-and-drop code block manipulation, and regenerates source code using LLMs like GPT or Ollama. It supports bidirectional code ↔ visual graph transformation with an intuitive UI.
+Alright, here’s a **top-tier GitHub README.md** for your **Airis** project.
+It’s structured like a professional open-source AI automation framework repo, so it’ll make your project look clean and legit.
 
-# 🧠 AIRIS - AI-Powered Intelligent Representation of Sourcecode
+---
 
-AIRIS transforms source code into a dynamic, drag-and-drop visual flow editor — combining AST parsing, interactive UI, and AI-powered code generation. Built entirely with **Electron + Vanilla JS**, this project is designed to visualize and edit code in a modular and intuitive way.
+```markdown
+# Airis — OS-Level AI Automation Layer
+
+> **Airis** is an intelligent automation framework that fuses **low-level system control in C** with **high-level reasoning from LLaMA 3**.  
+> Think *Siri meets OS kernel hooks* — fully local, privacy-preserving, and capable of automating your machine at the deepest level.
 
 ---
 
 ## 🚀 Features
 
-- 📦 Upload `.py` files and visualize code as draggable nodes
-- 🧩 AST-based block structure with editable properties
-- ➕ Create and connect nodes via "+" icons
-- 🎯 Language-aware node types (e.g., `def`, `if`, `for`)
-- ✍️ Edit node details (name, conditions, etc.)
-- 💾 Save/load visual projects
-- 🧠 AI-backed code generation from visual trees (via Ollama or GPT)
-- 🪄 Smooth panning, zooming, and animated interactions
+- **Real-time Machine State Monitoring** in C (CPU, RAM, active processes, etc.)
+- **AI Decision Making** via LLaMA 3 (Ollama) for contextual, human-like reasoning
+- **Two-Way Communication** between C (executor) and Python (AI brain) over a REST API
+- **Local Execution** — No cloud dependencies, your data never leaves your machine
+- **Extensible Actions** — Add your own commands, scripts, or automations
+- **Cross-Platform Potential** — Works on Linux, macOS, and Windows (with minor tweaks)
 
-## 🛠️ Setup Instructions
+---
 
-### 1. Clone the Repo
+## 🛠 Architecture
 
+```
 
-git clone https://github.com/your-username/AIRIS.git
-cd AIRIS
+┌───────────────────────────┐       ┌─────────────────────────┐
+│   C System Monitor         │  ---> │ Python AI Agent (Flask) │
+│  (Low-level OS Hooks)      │       │   + LLaMA 3 via Ollama  │
+└───────────────────────────┘       └─────────────────────────┘
+↑                                     ↓
+└────────────── AI Decision  ─────────┘
 
+````
 
-### 2. Install Dependencies
+**Flow:**
+1. **C Program** collects system metrics & state.
+2. Sends them to the **Python Agent** via HTTP POST.
+3. **Python Agent** prompts **LLaMA 3 (Ollama)** with state & user intent.
+4. AI responds with a specific action decision.
+5. **C Program** parses the decision and executes system commands.
 
+---
 
-npm install
+## 📦 Installation
 
-### 3. Run the App
+### 1️⃣ Install Dependencies
 
-npm start
+**System Requirements**
+- C compiler (GCC / Clang)
+- Python 3.9+
+- [Ollama](https://ollama.ai) with LLaMA 3 pulled locally
 
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
 
+# Pull LLaMA 3
+ollama pull llama3
+````
 
-## 📦 Exporting to `.exe` (Windows)
+**Python Requirements**
 
-### Install electron-builder
+```bash
+pip install flask requests
+```
 
-npm install --save-dev electron-builder
+**C Requirements**
 
+* `libcurl` for HTTP requests
+  Install via:
 
-### Add build script to `package.json`
+  ```bash
+  sudo apt install libcurl4-openssl-dev   # Ubuntu/Debian
+  brew install curl                       # macOS
+  ```
 
-"scripts": {
-  "start": "electron .",
-  "build": "electron-builder"
-}
+---
 
+### 2️⃣ Build & Run
 
-### Build Executable
+**Start the AI Agent**
 
-npm run build
+```bash
+python3 ai_agent.py
+```
 
+**Compile and Run the C Monitor**
 
-> `.exe` will be in the `dist/` folder after build.
+```bash
+gcc monitor_and_decide.c -o monitor_ai -lcurl
+./monitor_ai
+```
 
+---
 
+## 📂 Project Structure
 
-## 🧠 Technologies Used
+```
+airis/
+├── ai_agent.py           # Python AI Agent using Flask + Ollama
+├── monitor_and_decide.c  # C system monitor & executor
+├── README.md             # This file
+└── requirements.txt      # Python dependencies
+```
 
-* **Electron** - Desktop App Framework
-* **JavaScript (Vanilla)** - UI + Logic
-* **Python AST Parsing** - Backend structure generation
-* **Node.js / Express (optional)** - For API endpoints
-* **Ollama / GPT** - AI-powered code generation
+---
 
+## 💡 Example Interaction
 
+**C sends:**
 
-## 📁 Folder Structure
+```
+Machine State: CPU 85%, RAM 72%, chrome.exe active
+User Input: optimize performance
+```
 
+**AI decides:**
 
-AIRIS/
-│
-├── main.js                 # Electron main process
-├── index.html              # UI layout
-├── renderer.js             # Handles UI events
-├── parser.py               # Python AST logic
-├── assets/                 # Icons, logos
-├── nodes/                  # Dynamic node types
-└── utils/                  # Connection + code generation helpers
+```
+Close Chrome to free CPU and RAM
+```
 
+**C executes:**
 
+```bash
+pkill chrome
+```
 
-## 💡 Vision
+---
 
-AIRIS isn’t just a code viewer — it’s a **creative AI-driven workspace**. Think like Figma for code. It reimagines how we write, teach, and collaborate on source code visually.
+## 🛠 Extending Airis
 
+* **Add More System Metrics** in C (disk usage, network I/O, GPU load)
+* **Custom AI Actions** — map AI decisions to shell commands
+* **Multi-Agent Mode** — different AI models for different tasks
 
+---
 
-## 🧠 Future Plans
+## ⚠ Disclaimer
 
-* ✅ Multi-language support (JavaScript, Java, C++)
-* ✅ AI-based suggestions for code fixes/improvements
-* ✅ Realtime LLM integration
-* ✅ Team collaboration + GitHub sync
-* ✅ AST-to-flowchart and vice-versa conversion
+Airis can execute system-level commands. Use responsibly — actions like `rm -rf /` will destroy your system.
+Run in a sandboxed environment if testing dangerous automations.
 
-
-
-## 🧑‍💻 Author
-
-**Sharvesh** — Passionate about visual coding, AI interfaces, and making dev tools fun + smart.
-
-
+---
 
 ## 📜 License
 
-MIT — free to use, clone, fork, or remix. Contribute and make AIRIS more powerful!
+MIT License © 2025 \[Your Name]
+
+---
+
+## 🌟 Star This Repo
+
+If you like this project, consider leaving a ⭐ on GitHub to support its development.
+
+```
+
+---
+
+If you want, I can also make **fancy ASCII logos and badges** at the top so it looks like a polished commercial-grade AI framework.  
+Do you want me to do that next?
+```
