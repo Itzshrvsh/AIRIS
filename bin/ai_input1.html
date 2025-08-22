@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ask MetaAI</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      height: 100vh;
+      background: transparent;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #inputBox {
+      width: 100%;
+      max-width: 600px;
+      height: 100px;
+      padding: 14px;
+      font-size: 18px;
+      color: #000;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+      resize: none;
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+      outline: none;
+    }
+
+    #askButton {
+      margin-top: 20px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 24px;
+      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+      background-size: 400%;
+      color: black;
+      cursor: pointer;
+      transition: all 0.3s ease-in-out;
+      position: relative;
+      z-index: 1;
+    }
+
+    #askButton:hover {
+      animation: pulseGlow 3s linear infinite;
+    }
+
+    @keyframes pulseGlow {
+      0% { background-position: 0%; }
+      100% { background-position: 400%; }
+    }
+
+    #loader {
+      display: none;
+      width: 160px;
+      height: 15px;
+      margin-top: 30px;
+      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+      background-size: 400%;
+      animation: loaderAnim 3s linear infinite;
+      border-radius: 100px;
+      
+    }
+
+    @keyframes loaderAnim {
+      0% { background-position: 0%; }
+      100% { background-position: 400%; }
+    }
+  </style>
+</head>
+
+<body>
+  <textarea id="inputBox" placeholder="Ask MetaAI something smart..."></textarea>
+  <button id="askButton" onclick="askAI()">🚀 Ask MetaAI</button>
+  <div id="loader"></div>
+  <script>
+    const { ipcRenderer } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+  
+    let personalization = null;
+  
+    const personalizationFile = path.join(__dirname, 'personalization.json');
+  
+    // Load personalization.json once on startup
+    function loadPersonalization() {
+      try {
+        const data = fs.readFileSync(personalizationFile, 'utf-8');
+        personalization = JSON.parse(data);
+  
+        // Initialize chatMemory array if not present
+        if (!Array.isArray(personalization.chatMemory)) {
+          personalization.chatMemory = [];
+        }
+        console.log("Loaded personalization.json with chatMemory length:", personalization.chatMemory.length);
+      } catch (err) {
+        console.error("Failed to load personalization.json:", err);
+        personalization = { systemInstructions: "", chatMemory: [] };
+      }
+    }
+  
+    // Save the entire personalization object (instructions + chatMemory) back to personalization.json
+    function savePersonalization() {
+      try {
+        fs.writeFileSync(personalizationFile, JSON.stringify(personalization, null, 2));
+        console.log("Saved personalization.json with chatMemory length:", personalization.chatMemory.length);
+      } catch (err) {
+        console.error("Failed to save personalization.json:", err);
+      }
+    }
+  
+    loadPersonalization();
+  
+    async function askAI() {
+      const inputText = document.getElementById("inputBox").value.trim();
+      if (!inputText) return;
+  
+      const loader = document.getElementById("loader");
+      loader.style.display = "block";
+  
+      if (!personalization.systemInstructions) {
+        console.error("No instructions found in personalization.json");
+        loader.style.display = "none";
+        return;
+      }
+  
+      // Append user input to chat memory
+      personalization.chatMemory.push({ role: 'user', content: inputText });
+  
+      // Build chat history string from memory
+      const chatHistoryText = personalization.chatMemory.map(entry => {
+        const prefix = entry.role === 'user' ? 'User' : 'AIRIS';
+        return `${prefix}: ${entry.content}`;
+      }).join('\n');
+  
+      // Replace placeholder {{input}} with current user input
+      const baseInstructions = personalization.systemInstructions.replace("{{input}}", inputText);
+  
+      // Final prompt: system instructions + full chat history + AI reply prompt
+      const prompt = `${baseInstructions}\n\n${chatHistoryText}\nAIRIS:`;
+  
+      // Send prompt to backend AI via IPC
+      const response = await ipcRenderer.invoke('ask-ai', prompt);
+      console.log("AI Response:", response);
+  
+      // Append AI response to chat memory and save
+      personalization.chatMemory.push({ role: 'assistant', content: response });
+      savePersonalization();
+  
+      loader.style.display = "none";
+      ipcRenderer.send('show-sentiment-message', response);
+    }
+  </script>
+  
+  
+
+  
+  
+</body>
+</html>

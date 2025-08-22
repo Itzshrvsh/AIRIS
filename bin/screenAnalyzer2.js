@@ -1,4 +1,4 @@
-const { askAI } = require('./aiRequest');
+const { askAI } = require('../js-files/aiRequest');
 const crypto = require('crypto');
 
 let lastHash = null;
@@ -17,8 +17,7 @@ async function analyzeScreen(buffer) {
   const prompt = `
 This is a base64-encoded screenshot of a user's screen (partial):
 "${base64}"
-Based on this, if theres any questions found in the screenshot, answer them in a concise manner.
-if the user is in any exam , quizz and they are seeing some topic related to the exam, then answer them in a concise manner.
+Based on this, roast the user in one sarcastic sentence if they're wasting time.
 `;
 
   const result = await askAI(prompt);

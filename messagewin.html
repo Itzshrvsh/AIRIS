@@ -17,17 +17,13 @@
     body {
       margin: 0;
       padding: 0;
-      pointer-events: none; /* Disable interaction globally */
+      pointer-events: none;
     }
 
     #message-box,
     .window-button,
-    #message-text,
-    #progress-bar,
-    #summary-buttons,
-    #btn-full,
-    #btn-short {
-      pointer-events: auto; /* Re-enable only inside the box */
+    #message-text {
+      pointer-events: auto;
     }
 
     #message-box {
@@ -95,42 +91,13 @@
       height: 100%;
       width: 100%;
       background: #0af;
-      animation: shrink 30s linear forwards;
+      animation: shrink 8s linear forwards; /* Auto close after 8s */
     }
 
     @keyframes shrink {
       from { width: 100%; }
       to { width: 0%; }
     }
-
-    #summary-buttons {
-      display: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    #summary-buttons.show {
-      display: block;
-      opacity: 1;
-      margin-top: 10px;
-    }
-
-    #btn-full, #btn-short {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: white;
-      border-radius: 8px;
-      padding: 6px 12px;
-      margin-right: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      backdrop-filter: blur(6px);
-    }
-
-    #btn-full:hover, #btn-short:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
   </style>
 </head>
 <body>
@@ -142,94 +109,37 @@
     </div>
     <span id="message-text">Loading...(might be an error!)</span>
     <div id="progress-bar"><div id="progress-fill"></div></div>
-    <div id="summary-buttons">
-      <button id="btn-full">📖 Full</button>
-      <button id="btn-short">⚡ Short</button>
-    </div>
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
+    const { ipcRenderer, clipboard } = require('electron');
     const box = document.getElementById('message-box');
     const textEl = document.getElementById('message-text');
-    const summaryBox = document.getElementById('summary-buttons');
-    const btnFull = document.getElementById('btn-full');
-    const btnShort = document.getElementById('btn-short');
 
-    let fullSummary = "", shortSummary = "";
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    function closeWindow() {
-      box.classList.remove('show');
-      box.classList.add('closing');
-      setTimeout(() => window.close(), 400);
-    }
-
-    function cleanForSpeech(text) {
-      return text
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDDE6-\uDDFF]|\uD83D[\uDC00-\uDE4F\uDE80-\uDEFF]|\uD83E[\uDD00-\uDDFF]/g, '')
-        .replace(/https?:\/\/[^\s]+/g, '')
-        .replace(/\s+/g, ' ')
-        .replace(/[,;:]{2,}/g, ',')
-        .replace(/\[([^\]]*)\]/g, '')
-        .replace(/<.*?>/g, '')
-        .toLowerCase()
-        .trim();
-    }
-
-    function speak(text, lang = "en-IN", speed = 1.0) {
-      if (!text) return;
-      const utterance = new SpeechSynthesisUtterance(cleanForSpeech(text));
-      utterance.lang = lang;
-      utterance.rate = speed;
-      utterance.pitch = 1.1;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    }
-
-    function speakWithinTime(text, maxDurationInSec = 30) {
-      const words = text.trim().split(/\s+/).length;
-      const averageRate = Math.max(0.5, Math.min(3, words / maxDurationInSec));
-      speak(text, "en-IN", averageRate);
-    }
-
-    ipcRenderer.on('display-message', (_, msg) => {
+    async function displayMessageFlow(msg) {
       box.classList.add('show');
       box.focus();
       textEl.textContent = msg;
-      summaryBox.classList.remove("show");
-      speakWithinTime(msg, 30);
 
-      setTimeout(() => {
-        box.classList.remove('show');
-        closeWindow();
-      }, 30000);
-    });
+      // 🔥 Auto copy to clipboard
+      clipboard.writeText(msg);
 
-    ipcRenderer.on('yt-summary-options', (_, data) => {
-      fullSummary = data.full;
-      shortSummary = data.short;
-      summaryBox.classList.add("show");
-      box.classList.add('show');
-      box.focus();
-      textEl.textContent = "🎬 Summary ready. Choose:";
-    });
+      await sleep(8000); // show for 8s
 
-    btnFull.addEventListener('click', () => {
-      textEl.textContent = fullSummary;
-      speak(fullSummary);
-      summaryBox.style.display = "none";
-    });
+      box.classList.remove('show');
+      box.classList.add('closing');
+      await sleep(400);
+      window.close();
+    }
 
-    btnShort.addEventListener('click', () => {
-      textEl.textContent = shortSummary;
-      speak(shortSummary);
-      summaryBox.style.display = "none";
+    ipcRenderer.on('display-message', async (_, msg) => {
+      await displayMessageFlow(msg);
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeWindow();
+      if (e.key === 'Escape') window.close();
     });
   </script>
 </body>

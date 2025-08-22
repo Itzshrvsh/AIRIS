@@ -1,30 +1,42 @@
+const fs = require('fs');
 const axios = require('axios');
 
 async function analyzeSentiment(text) {
-  const prompt = `
-You are MetaAI-Floaty, a floating AI assistant that is sleek, composed, and highly intelligent. 
-When responding to the user, your replies should be:
+  const isQuestion = /(\?|\bdefine\b|\bexplain\b|\btheorem\b|\bdifference\b|\bcomplexity\b)/i.test(text);
 
-- Short and purposeful (1–2 lines max)
-- Confident, calm, and clear
-- Helpful without sounding overly friendly or silly
-- Never roast, joke, or use slang
-- Always sound like a top-tier, efficient digital assistant
-- No emojis unless contextually relevant (and very minimal)
+  let prompt;
+  if (isQuestion) {
+    prompt = `
+You are AIRIS, an elite digital assistant. The user is in exam/study mode. 
+Your job is to answer the question clearly in one or two lines max.
+Do NOT describe what you’re doing. Just give the answer.
 
-Respond to this input as if you’re advising a CEO, not a buddy.
-And don't ever describe what you're going to say, just say it.
+Question: "${text}"
+    `;
+  } else {
+    prompt = `
+You are AIRIS, an elite assistant. The user is reading/watching something. 
+Provide a concise 1–2 line insight about what is on the screen.
+No fluff, no generic filler.
 
-User input: "${text}"
-  `;
+Screen text: "${text}"
+    `;
+  }
 
-  const res = await axios.post('http://localhost:11434/api/generate', {
-    model: 'llama3',
-    prompt: prompt,
+  const res = await axios.post("http://localhost:11434/api/generate", {
+    model: "llama3",
+    prompt,
     stream: false
   });
 
-  return res.data.response.trim();
+  const answer = res.data.response.trim();
+
+  // Save only if it's a real exam/study Q
+  if (isQuestion) {
+    fs.appendFileSync("qa_log.txt", `Q: ${text}\nA: ${answer}\n\n`);
+  }
+
+  return answer;
 }
 
 module.exports = { analyzeSentiment };

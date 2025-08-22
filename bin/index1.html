@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+
+
+
+
+<div id="eyes">
+  <div class="eye" id="left-eye">
+    <div class="eyebg"></div>
+    <div class="eyelid"></div>
+    <div class="pupil" id="left-pupil"></div>
+    
+  </div>
+  <div class="eye" id="right-eye">
+    <div class="eyebg"></div>
+    <div class="eyelid"></div>
+    <div class="pupil" id="right-pupil"></div>
+    <div class="eyelid"></div>
+  </div>
+</div>
+<div id="ai-message-box"></div>
+</div>
+
+
+
+
+<script>
+  const { ipcRenderer } = require('electron');
+  const leftEye = document.getElementById("left-eye");
+  const rightEye = document.getElementById("right-eye");
+  const leftPupil = document.getElementById('left-pupil');
+  const rightPupil = document.getElementById('right-pupil');
+  const leftHand = document.getElementById('left-hand');
+  const rightHand = document.getElementById('right-hand');
+  const aiContainer = document.getElementById('ai-container');
+  const aiMessage = document.getElementById('ai-message');
+  const glass = document.getElementById('glass')
+  const eyeRadius = 30; // adjust if your eye is bigger
+  const pupilRadius = 10;
+  
+  const maxOffset = eyeRadius - pupilRadius - 10; // give a bit of margin
+  const slideBox = document.getElementById('slide-ai-box');
+  const slideText = document.getElementById('slide-ai-text');
+  const closeBtn = document.getElementById('slide-ai-close');
+  const messageBox = document.getElementById('message-box'); // Make sure this exists
+  const trayBox = document.getElementById("tray-box");
+  const eyes = document.getElementById('eyes');
+  const buttons = document.querySelectorAll('.button');
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('mouseenter', () => {
+      ipcRenderer.send('allow-mouse-events');
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      ipcRenderer.send('ignore-mouse-events');
+    });
+
+    btn.addEventListener('click', () => {
+      ipcRenderer.send('menuwin');
+    });
+  });
+
+
+
+  let isIdle = false;
+  let idleTimeout = null;
+  let messageTimeout = null;
+  let randomEyeInterval = null;
+  let latestMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  let slideTimeout = null;
+  let idleTimer = null;
+  let idleThreshold =  8000
+  let idleTimerEye = null;
+  let lookInterval;
+  let blinkInterval;
+  let idleTimerPose = null;
+  const idleThresholdwait = 10000; // e.g., 10s
+  const prePoseDelay = 4000;       // 4s before eyes close
+  let mouseX = 0;
+  let mouseY = 0;
+  let targetX = window.innerWidth / 2;
+  let targetY = window.innerHeight / 2;
+  let isRandom = true;
+  let eyesActive = true;
+  let trayActivated = false;
+  // Approx. speech rate 2x = 300 words/min = ~1500 chars/min = 25 chars/sec
+  let rate = 2;
+  let charsPerSecond = 25 * rate;
+  let speed = 1000 / charsPerSecond;
+  let selectedReplyLang = "English";
+  let selectedVoiceLang = "ta-IN";
+  let ytSummaries = null;
+
+  ipcRenderer.on('global-mouse', (event, pos) => {
+    const eyeCenters = getEyeCenters();
+
+    updatePupil(leftPupil, eyeCenters.left, pos);
+    updatePupil(rightPupil, eyeCenters.right, pos);
+  });
+
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('mouseenter', () => {
+        window.electronAPI.allowMouse();
+      });
+
+      btn.addEventListener('mouseleave', () => {
+        window.electronAPI.ignoreMouse();
+      });
+
+      btn.addEventListener('click', () => {
+        window.electronAPI.showMessage();
+      });
+    });
+
+      function stripEmojis(text) {
+        return text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDDE6-\uDDFF]|\uD83D[\uDC00-\uDE4F\uDE80-\uDEFF]|\uD83E[\uDD00-\uDDFF])/g, '');
+      }
+
+        
+
+
+function trackMouse(e) {
+  if (isIdle) return;
+
+  const eyes = [leftEye, rightEye];
+  const pupils = [leftPupil, rightPupil];
+
+  eyes.forEach((eye, i) => {
+    const rect = eye.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    const angle = Math.atan2(dy, dx);
+    const distance = Math.min(15, Math.hypot(dx, dy) / 10);
+
+    const x = Math.cos(angle) * distance;
+    const y = Math.sin(angle) * distance;
+
+    setPupilTransform(pupils[i], x, y);
+  });
+}
+
+  
+  function closeEyelid() {
+    document.getElementById('eyelid-path').classList.remove('open');
+    document.getElementById('eyelid-path').classList.add('closed');
+  }
+
+  function openEyelid() {
+    document.getElementById('eyelid-path').classList.remove('closed');
+    document.getElementById('eyelid-path').classList.add('open');
+  }
+
+
+    window.addEventListener("mousemove", trackMouse);
+
+    function blinkEyes() {
+      leftEye.classList.add("blink-eyelid");
+      rightEye.classList.add("blink-eyelid");
+
+      setTimeout(() => {
+        leftEye.classList.remove("blink-eyelid");
+        rightEye.classList.remove("blink-eyelid");
+      }, 300);
+    }
+
+    function winkRandomEye() {
+      const eye = Math.random() > 0.5 ? leftEye : rightEye;
+      eye.classList.add("wink-eyelid");
+      setTimeout(() => {
+        eye.classList.remove("wink-eyelid");
+      }, 300);
+      const eyes = Math.random() > 0.5;
+      eyes.classList.add("hidden-eyes");
+      setTimeout(() => {
+        eyes.classList.remove("hidden-eyes");
+      }, 5000);
+
+    }
+    // 🔄 Smoothly interpolate eye position
+function setPupilTransform(pupil, x, y) {
+  pupil.style.transition = 'transform 0.3s ease-out';
+  pupil.style.transform = `translate(${x}px, ${y}px)`;
+}
+
+// 🎭 Expressive idle eye movements
+function randomLook() {
+  if (!isIdle) return;
+
+  const expressions = [
+    [6, -6],   // top-right
+    [-6, -6],  // top-left
+    [8, 0],    // right
+    [-8, 0],   // left
+    [0, 8],    // down
+    [0, -10],  // up
+    [0, 0]     // center
+  ];
+
+  const [x, y] = expressions[Math.floor(Math.random() * expressions.length)];
+  setPupilTransform(leftPupil, x, y);
+  setPupilTransform(rightPupil, x, y);
+}
+
+// 💤 Idle blinking (optional eyelid logic included)
+function blinkEyes() {
+  if (!isIdle) return;
+
+  const lids = document.querySelectorAll(".eyelid");
+  lids.forEach(lid => {
+    lid.classList.add("closed"); // assume this triggers closed CSS
+  });
+  setTimeout(() => {
+    lids.forEach(lid => {
+      lid.classList.remove("closed");
+    });
+  }, 150);
+}
+
+// ⏲️ Start idle behavior
+function startIdleActions() {
+  if (isIdle) return;
+  isIdle = true;
+
+  lookInterval = setInterval(randomLook, 1000 + Math.random() * 1000);
+  blinkInterval = setInterval(blinkEyes, 1000 + Math.random() * 1000);
+
+  console.log("🧠 Idle started");
+}
+
+// ⛔ Stop idle behavior and reset eyes
+function stopIdleActions() {
+  clearInterval(lookInterval);
+  clearInterval(blinkInterval);
+  lookInterval = null;
+  blinkInterval = null;
+
+  setPupilTransform(leftPupil, 0, 0);
+  setPupilTransform(rightPupil, 0, 0);
+
+  isIdle = false;
+  console.log("⚡ Active - idle stopped");
+}
+
+// 🔁 Resets idle timer on input
+function resetIdleTimer() {
+  stopIdleActions();
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(startIdleActions, 3000);
+}
+
+// 🧿 Mouse moves = cancel idle
+document.addEventListener("mousemove", resetIdleTimer);
+document.addEventListener("mousedown", resetIdleTimer);
+document.addEventListener("keydown", resetIdleTimer);
+
+
+document.addEventListener("mousemove", resetIdleTimer);
+document.addEventListener("mousedown", resetIdleTimer);
+document.addEventListener("keydown", resetIdleTimer);
+
+
+    ipcRenderer.on('shortcut-wink', () => {
+      console.log('Shortcut triggered!');
+      winkRandomEye(); // or your own logic here
+    });
+    ipcRenderer.on('yt-summary-options', (_, data) => {
+      ytSummaries = data;
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!ytSummaries) return;
+
+      if (e.key.toLowerCase() === 'f') {
+        ipcRenderer.send('show-sentiment-message', ytSummaries.full);
+      } else if (e.key.toLowerCase() === 's') {
+        ipcRenderer.send('show-sentiment-message', ytSummaries.short);
+      }
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key.toLowerCase() === 'f') {
+        window.electronAPI.sendSummaryChoice('full');
+      } else if (event.key.toLowerCase() === 's') {
+        window.electronAPI.sendSummaryChoice('short');
+      }
+    });
+
+</script>
+
+</body>
+</html>

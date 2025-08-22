@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>MetaAI Launcher</title>
+  <title>AIRIS Launcher</title>
   <style>
     body {
       font-family: sans-serif;
@@ -78,42 +78,6 @@
   <h1>🧠 AIRIS </h1>
 
   <div class="section">
-    <span class="label">Macos TitleBar</span>
-    <input type="checkbox" class="switch" id="TitleBar">
-<!--     
-    <span class="label">Enable Roasting</span>
-    <input type="checkbox" class="switch" id="roastSwitch" checked>
-    
-    <span class="label">Enable YouTube Summary</span>
-    <input type="checkbox" class="switch" id="ytSwitch" checked>
-
-    <span class="label">Enable Eye Tracking</span>
-    <input type="checkbox" class="switch" id="eyeSwitch" checked>
-
-    <span class="label">Enable Hand Gestures</span>
-    <input type="checkbox" class="switch" id="handSwitch" checked> -->
-  </div>
-
-  <div class="section">
-    <span class="label">AI Reply Language:</span>
-    <select id="replyLang">
-      <option value="en-IN">English</option>
-      <option value="ta-IN">Tamil</option>
-      <option value="hi-IN">Hindi</option>
-    </select>
-
-    <span class="label">Voice Language:</span>
-    <select id="voiceLang">
-      <option value="en-IN">English</option>
-      <option value="ta-IN">Tamil</option>
-      <option value="hi-IN">Hindi</option>
-    </select>
-
-    <span class="label">Voice Speed: <span id="speedLabel">Normal</span></span>
-    <input type="range" min="0.5" max="2" step="0.1" value="1" id="voiceSpeed">
-  </div>
-
-  <div class="section">
     <button id="startAI">🚀 Start Assistant</button>
     <button id="exitBtn" onclick="window.close()">❌ Exit</button>
   </div>
@@ -121,55 +85,10 @@
 <script>
   const { ipcRenderer } = require('electron');
 
-  const getSpeedLabel = (val) => {
-    const v = parseFloat(val);
-    if (v < 0.5) return "Slow";
-    if (v < 1) return "Medium Slow";
-    if (v < 1.25) return "Normal";
-    if (v < 1.75) return "Medium Fast";
-    return "Fast";
-  };
-
-  // 🔁 Load saved settings
-  function loadSettings() {
-    const saved = JSON.parse(localStorage.getItem("metaAIConfig") || "{}");
-
-    document.getElementById("TitleBar").checked = saved.TitleBar === "WIN";
-    document.getElementById("replyLang").value = saved.replyLang || "en-IN";
-    document.getElementById("voiceLang").value = saved.voiceLang || "en-IN";
-    document.getElementById("voiceSpeed").value = saved.voiceSpeed || 1;
-    document.getElementById("speedLabel").innerText = getSpeedLabel(saved.voiceSpeed || 1);
-  }
-
-  // 💾 Save settings on change
-  function saveSettings() {
-    const config = {
-      aiMode: document.getElementById("TitleBar").checked ? "Win" : "manual",
-
-      replyLang: document.getElementById("replyLang").value,
-      voiceLang: document.getElementById("voiceLang").value,
-      voiceSpeed: parseFloat(document.getElementById("voiceSpeed").value)
-    };
-    localStorage.setItem("metaAIConfig", JSON.stringify(config));
-  }
-
-
-
   // ⏰ Run after DOM loads
   document.addEventListener("DOMContentLoaded", () => {
     loadSettings();
-
-    document.getElementById("voiceSpeed").addEventListener("input", (e) => {
-      document.getElementById("speedLabel").innerText = getSpeedLabel(e.target.value);
       saveSettings();
-    });
-
-    const inputs = [
-      "TitleBar",
-      "replyLang", "voiceLang"
-    ];
-    inputs.forEach(id => {
-      document.getElementById(id).addEventListener("change", saveSettings);
     });
 
     document.getElementById("exitBtn").addEventListener("click", () => {
@@ -181,7 +100,6 @@
       ipcRenderer.send("start-ai", config);
       window.close();
     });
-  });
 </script>
 
 </body>

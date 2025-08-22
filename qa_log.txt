@@ -1,0 +1,23 @@
+Q: Q: What is the time complexity of quicksort in the average case?
+A: O(n log n)
+A: O(n log n)
+
+Q: Q: What is the time complexity of quicksort in the average case?
+A: O(n log n)
+A: O(n log n)
+
+Q: 🖼️ I see something on your screen:
+
+"© ®@ (4225) Wer [B SkyTexture [EJ Questiont: | [J 1904005-cryptograpl | EJ 190870510 @ Rulesoftne © Hom ® oo © senvary-C @ Ruesofthe  @ Ruesofthe  @ Ruesofthe  @ Ruesofthe  @ Ruesofthe +
+C mm § smvaliammaiac.infwp-content/up )25/06/1904005-cr ny-and-network-security-1, RO09>0 SEL =
+(2850) Ethical Hac.
+= 1904005-cryptography-and-network-security-1.pdf 2/13 | — 1% + | BO KE -
+ACTA’ Algorithme Prime numbers-Fermat's and Euler's Theorem- esting jor prmanty -1ne
+Chinese remainder theorem- Discrete lo"
+A: The question is about Cryptography and Network Security.
+
+Q: reg('Control+?', () => {
+      createTerminalWindow();
+    });
+A: This code snippet registers a keyboard shortcut (Control + ?) that, when pressed, will execute the `createTerminalWindow()` function.
+

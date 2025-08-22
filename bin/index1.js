@@ -1,20 +1,21 @@
-const { app, ipcMain, globalShortcut, clipboard, screen, shell , BrowserWindow , dialog } = require('electron');
+const { app, ipcMain, globalShortcut, clipboard, screen, shell , BrowserWindow } = require('electron');
 const { BrowserWindow: AcrylicBrowserWindow } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
 const robot = require('robotjs');
 const os = require('os');
 const fs = require('fs');
 const { spawn, exec } = require('child_process');
 let mainWindow = null , menuWindow = null , inputWindow = null , messageWindow = null;
-const { askAI } = require('./js-files/aiRequest');
-const { analyzeScreen: observeScreen, setMainWindow } = require('./js-files/screenObserver');
-const { analyzeScreen: roastScreen } = require('./js-files/mainRoaster');
-const { analyzeSentiment } = require('./js-files/sentimentAnalyzer');
-const { startAppWatcher } = require('./js-files/appWatcher');
-const { runYouTubeSummary } = require('./js-files/youtubeSummarizer');
-const { saveCodeToDesktop } = require('./js-files/fileGenerator');
-const { remember, recall, logChat } = require('./memoryManager');
-const systemInstructions = require('./js-files/systemInstructions');
+const { askAI } = require('../js-files/aiRequest');
+const { analyzeScreen: observeScreen, setMainWindow } = require('../js-files/screenObserver');
+const { analyzeScreen: roastScreen } = require('../js-files/mainRoaster');
+const { analyzeSentiment } = require('../js-files/sentimentAnalyzer');
+const { startAppWatcher } = require('../js-files/appWatcher');
+const { runYouTubeSummary } = require('../js-files/youtubeSummarizer');
+const { saveCodeToDesktop } = require('../js-files/fileGenerator');
+const { remember, recall, logChat } = require('../memoryManager');
+const systemInstructions = require('../js-files/systemInstructions');
 let glowWindow = null;
 let lastCursorPos = null;
 let systemPrompt = '';
@@ -51,36 +52,6 @@ let globalSettings = {
   voiceLang: 'en-IN',
   voiceSpeed: 1.0
 };
-
-let terminalWin;
-
-// ─── terminal window ─────────────────────────────────────────────────────────
-function createTerminalWindow() {
-  terminalWin = new BrowserWindow({
-    width: 800,
-    height: 600,
-    frame: false,
-    title: "AI Terminal",
-    backgroundColor: "#000000",
-    webPreferences: {
-      preload: path.join(__dirname, "./js-files/proload.js"),
-      contextIsolation: true,
-      nodeIntegration: false
-
-    },
-  });
-
-  terminalWin.loadFile("termi.html");
-
-  terminalWin.on("closed", () => {
-    terminalWin = null;
-  });
-
-  terminalWin.on("ready-to-show", () => {
-    terminalWin.show();
-    terminalWin.focus();
-  });
-}
 // ─── Main Eyes ─────────────────────────────────────────────────────────
 
 function createMenuWindow() {
@@ -91,7 +62,7 @@ function createMenuWindow() {
     fullscreenable: false,
     frame: true,
     webPreferences: {
-      preload: path.join(__dirname, "./js-files/proload.js"),
+      preload: path.join(__dirname, "./js-files/preload.js"),
       nodeIntegration: true,
       contextIsolation: false
     }
@@ -120,7 +91,7 @@ function createMainWindow() {
     hasShadow: false,
     skipTaskbar: true,
     webPreferences: {
-      preload: path.join(__dirname, './js-files/proload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
       contextIsolation: false
     }
@@ -189,7 +160,7 @@ function showMessageWindow(msg) {
     skipTaskbar: true,
     focusable: true,
     webPreferences: {
-      preload: path.join(__dirname, './js-files/proload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
       contextIsolation: false
     }
@@ -248,7 +219,7 @@ ipcMain.on('show-glow-window', () => {
     if (glowWindow && !glowWindow.isDestroyed()) {
       glowWindow.close();
     }
-  }, 9000);
+  }, 3000);
 });
 // ─── functions ───────────────────────────────────────────────────────
 function startErrorWatcher() {
@@ -370,11 +341,7 @@ ipcMain.on('show-sentiment-message', (event, message) => {
 ipcMain.on('menuwin' , () => {
   createMenuWindow();
 });
-ipcMain.handle("ask-da", async (event, message) => {
-  // Call your AI logic here
-  message = "Hello from main process!";
-  return "AI response to: " + message;
-});
+
 
 ipcMain.on('allow-mouse-events', () => {
   const win = BrowserWindow.getAllWindows()[0];
@@ -407,29 +374,25 @@ ipcMain.handle('ask-ai', async (_, userInput) => {
     // === Paste a Code (Live Typing to Cursor) ===
     else if (loweredInput.includes("paste a code") && codeMatch) {
       const code = codeMatch[2].trim();
-    
+
       if (!lastCursorPos) {
         showMessageWindow("⚠️ Cursor position not stored! Press Ctrl+Shift+C before using paste.");
         return response;
       }
-    
+
       // Move mouse to the last stored position and click to focus
       robot.moveMouse(lastCursorPos.x, lastCursorPos.y);
       robot.mouseClick();
       showMessageWindow(`💬 Pasting code where your cursor was — starting in 2s...`);
-    
-      setTimeout(() => {
-        // Copy the code to clipboard
-        clipboard.writeText(code);
-    
-        // Paste it instantly
-        robot.keyTap("v", "control");
+
+      setTimeout(async () => {
+        await liveTypeCode(code);
       }, 2000);
     }
 
     // === If no valid code ===
     else if (!codeMatch && (loweredInput.includes("create a file") || loweredInput.includes("paste a code"))) {
-      showMessageWindow(response);
+      showMessageWindow("⚠️ No valid code block found.");
     }
 
     return response;
@@ -479,6 +442,8 @@ ipcMain.on('save-settings', (event, settings) => {
 
 
 
+
+
 ipcMain.on("close-menu-window", () => {
   if (menuWindow && !menuWindow.isDestroyed()) {
     menuWindow.close(); // This triggers the `.on("closed")` cleanup
@@ -493,27 +458,12 @@ ipcMain.on("sendSettings", (event, settings) => {
 
 
 
-function checkDependencies() {
-  exec('where code', (err) => {
-    if (err) {
-      // Missing VS Build Tools
-      dialog.showErrorBox(
-        "Missing Dependency",
-        "Visual Studio Build Tools not found. Please install:\nhttps://visualstudio.microsoft.com/visual-cpp-build-tools/"
-      );
-    }
-  });
-}
+
+
 
 // ─── Initialization ─────────────────s──────────────────────────────────────
 
 app.whenReady().then(async () => {
-  console.log("✅ ollama pull llama3");
-  exec('ollama pull llama3');
-  checkDependencies()
-
-
-
   try {
     // Performance tweaks
     app.commandLine.appendSwitch('enable-transparent-visuals');
@@ -523,7 +473,6 @@ app.whenReady().then(async () => {
     await createMenuWindow();
     startAppWatcher();
 
-
     // Global mouse tracking for overlay
     setInterval(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -532,8 +481,6 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send('cursor-position', screen.getCursorScreenPoint());
       }
     }, 60);
-
-    
 
     // Roast loop every 2 minutes with 20% chance
     setInterval(async () => {
@@ -568,11 +515,6 @@ app.whenReady().then(async () => {
       openAIInputWindow();
     });
     
-    reg('Control+/', () => {
-      if (!terminalWin) createTerminalWindow();
-      else terminalWin.focus();
-    });
-    reg('Control+Shift+/', () => terminalWin?.close() );
     reg('Control+Shift+Space', () => inputWindow?.close());
 
     reg('Control+Shift+R', async () => {
@@ -635,7 +577,6 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error("❌ app.whenReady() failed:", err.message);
   }
-  
 });
 
 // Mac-only reactivation
@@ -657,40 +598,8 @@ ipcMain.on("start-ai", (event, settings) => {
   createMainWindow();
   userSettings = { ...userSettings, ...settings };
   console.log("✅ User Settings Applied:", userSettings);
- 
+
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send("update-settings", userSettings);
   }
 });
-  
-  
-  
-ipcMain.handle('run-command', async (event, cmd) => {
-  return new Promise((resolve) => {
-    // Use PowerShell to launch elevated CMD
-    const psCommand = `Start-Process cmd.exe -ArgumentList '/c ${cmd}' -Verb RunAs`;
-
-    const child = spawn('powershell.exe', ['-Command', psCommand], {
-      windowsHide: true
-    });
-
-    let output = '';
-    let errorOutput = '';
-
-    child.stdout.on('data', (data) => {
-      output += data.toString();
-      event.sender.send('cmd-output', data.toString()); // live output
-    });
-
-    child.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-      event.sender.send('cmd-output', data.toString());
-    });
-
-    child.on('close', (code) => {
-      if (code !== 0) resolve(`Error: ${errorOutput || 'Code ' + code}`);
-      else resolve(output);
-    });
-  });
-});
-
