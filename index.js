@@ -660,37 +660,38 @@ ipcMain.on("start-ai", (event, settings) => {
  
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send("update-settings", userSettings);
-  }
+  } 
 });
-  
-  
-  
+   
 ipcMain.handle('run-command', async (event, cmd) => {
-  return new Promise((resolve) => {
-    // Use PowerShell to launch elevated CMD
-    const psCommand = `Start-Process cmd.exe -ArgumentList '/c ${cmd}' -Verb RunAs`;
-
-    const child = spawn('powershell.exe', ['-Command', psCommand], {
-      windowsHide: true
+  return new Promise((resolve, reject) => {
+    // Use 'cmd.exe /c' to run the command
+    const child = spawn('cmd.exe', ['/c', cmd], {
+      windowsHide: true,
+      shell: false
     });
-
+ 
     let output = '';
     let errorOutput = '';
-
+  
     child.stdout.on('data', (data) => {
       output += data.toString();
-      event.sender.send('cmd-output', data.toString()); // live output
     });
-
+ 
     child.stderr.on('data', (data) => {
       errorOutput += data.toString();
-      event.sender.send('cmd-output', data.toString());
     });
 
     child.on('close', (code) => {
-      if (code !== 0) resolve(`Error: ${errorOutput || 'Code ' + code}`);
-      else resolve(output);
+      if (code === 0) {
+        resolve(output.trim());
+      } else {
+        resolve(`${output.trim()}\n${errorOutput.trim()}`);
+      }
+    });
+
+    child.on('error', (err) => {
+      reject(err);
     });
   });
 });
-

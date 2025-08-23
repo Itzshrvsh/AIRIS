@@ -4,154 +4,153 @@
 <meta charset="UTF-8">
 <title>MetaAI Terminal - Mechanical Edition</title>
 <style>
-  /* Futuristic Urban Industrial Look */
-  body {
-    background: #0d0d0d;
-    font-family: 'Courier New', monospace;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-    color: #a0f0ff;
-    position: relative;
-  }
-  
-  /* Smoke tubes effect */
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: url('https://i.ibb.co/tMJ2vMK/smoke.png') repeat;
-    opacity: 0.08;
-    pointer-events: none;
-    animation: smokeDrift 15s linear infinite;
-    z-index: 5;
-  }
-  @keyframes smokeDrift {
-    from { background-position: 0 0; }
-    to { background-position: 800px -400px; }
-  }
-  
-  /* Flame tube effect */
-  body::after {
-    content: "";
-    position: fixed;
-    bottom: 0; left: 50%;
-    width: 120%; height: 200px;
-    background: url('https://i.ibb.co/3yW8Qcp/flames.png') repeat-x;
-    opacity: 0.06;
-    transform: translateX(-50%);
-    pointer-events: none;
-    animation: flameFlicker 1s infinite;
-    z-index: 6;
-  }
-  @keyframes flameFlicker {
-    0% { opacity: 0.04; transform: translateX(-50%) scaleY(1); }
-    50% { opacity: 0.08; transform: translateX(-50%) scaleY(1.1); }
-    100% { opacity: 0.04; transform: translateX(-50%) scaleY(1); }
-  }
-  
-  /* Metallic panel container */
-  #chat-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 22px;
-    border-left: 6px solid #444;
-    border-right: 6px solid #333;
-    background: linear-gradient(135deg, #111 0%, #1b1b1b 100%);
-    box-shadow: inset 0 0 15px #3af, inset 0 0 25px #f80;
-    position: relative;
-    z-index: 10;
-  }
-  
-  /* Message styling */
-  .message {
-    margin: 12px 0;
-    padding: 12px 16px;
-    border-left: 5px solid #3af;
-    background: rgba(50, 150, 200, 0.08);
-    border-radius: 5px;
-    white-space: pre-wrap;
-    text-shadow: 0 0 2px #3af;
-    animation: pulse 1.2s infinite alternate;
-  }
-  .user { border-left-color: #3af; color: #80f0ff; }
-  .ai { border-left-color: #f80; color: #ffb84d; background: rgba(255, 120, 0, 0.07); }
-  .ai.error { color: #ff0044; text-shadow: 0 0 3px #f80, 0 0 6px #ff0; animation: glitch 0.3s infinite; }
-  
-  @keyframes pulse { from {opacity:0.85;} to {opacity:1;} }
-  @keyframes glitch {
-    0%{transform:translate(0);} 20%{transform:translate(-1px,1px);}
-    40%{transform:translate(1px,-1px);} 60%{transform:translate(-1px,2px);}
-    80%{transform:translate(2px,-2px);} 100%{transform:translate(0);}
-  }
-  
-  /* Loader style */
-  .loader {
-    color: #aaa;
-    font-style: italic;
-    animation: blink 1s infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
-  
-  /* Input area - industrial panel */
-  #input-area {
-    display: flex;
-    border-top: 3px solid #222;
-    padding: 6px;
-    background: linear-gradient(135deg,#0f0f0f,#1a1a1a);
-    box-shadow: inset 0 0 10px #3af, inset 0 0 15px #f80;
-  }
-  
-  #inputBox {
-    flex: 1;
-    padding: 12px;
-    font-family: monospace;
-    font-size: 16px;
-    color: #a0f0ff;
-    background: #111;
-    border: 2px solid #555;
-    border-radius: 5px;
-    box-shadow: 0 0 6px #3af inset, 0 2px 2px #000 inset;
-    outline: none;
-    transition: all 0.3s;
-  }
-  #inputBox:focus {
-    border-color: #3af;
-    box-shadow: 0 0 12px #3af inset, 0 2px 2px #000 inset;
-  }
-  
-  #sendButton {
-    background: #333;
-    color: #a0f0ff;
-    border: 2px solid #555;
-    margin-left: 8px;
-    border-radius: 5px;
-    padding: 0 16px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 0 8px #3af inset, 0 2px 4px #000;
-    transition: all 0.2s;
-  }
-  #sendButton:hover {
-    background: #444;
-    box-shadow: 0 0 15px #3af inset, 0 2px 4px #000;
-  }
-  
-  /* Output console */
-  #output {
-    color: #a0f0ff;
-    padding: 12px;
-    white-space: pre-wrap;
-    background: linear-gradient(135deg,#111,#1a1a1a);
-    border-top: 2px solid #333;
-    box-shadow: inset 0 0 12px #3af, inset 0 0 18px #f80;
-    overflow-y: auto;
-    max-height: 28vh;
-  }
-  </style>
+  /* Futuristic Urban Industrial Look - Light Pink & Purple Theme */
+body {
+  background: #1a0d1a;
+  font-family: 'Courier New', monospace;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  color: #e0c0ff;
+  position: relative;
+}
+
+/* Smoke tubes effect */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: url('https://www.svgrepo.com/show/530661/genetic-data.svg') repeat;
+  opacity: 0.08;
+  pointer-events: none;
+  animation: smokeDrift 15s linear infinite;
+  z-index: 5;
+}
+@keyframes smokeDrift {
+  from { background-position: 0 0; }
+  to { background-position: 800px -400px; }
+}
+
+/* Flame tube effect */
+body::after {
+  content: "";
+  position: fixed;
+  bottom: 0; left: 50%;
+  width: 120%; height: 200px;
+  background: url('https://www.svgrepo.com/show/530661/genetic-data.svg') repeat-x;
+  opacity: 0.06;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: flameFlicker 1s infinite;
+  z-index: 6;
+}
+@keyframes flameFlicker {
+  0% { opacity: 0.04; transform: translateX(-50%) scaleY(1); }
+  50% { opacity: 0.08; transform: translateX(-50%) scaleY(1.1); }
+  100% { opacity: 0.04; transform: translateX(-50%) scaleY(1); }
+}
+
+/* Metallic panel container */
+#chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px;
+  border-left: 2px solid #000000;  /* golden borders */
+  border-right: 2px solid #000000;
+  background: linear-gradient(45deg,#00000067,#ff00dd73);
+  position: relative;
+  z-index: 10;
+}
+
+/* Message styling */
+.message {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-left: 5px solid #000000; /* golden accent */
+  background: rgba(255, 182, 193, 0.1); /* light pink overlay */
+  border-radius: 5px;
+  white-space: pre-wrap;
+  text-shadow: 0 0 2px #ffd700;
+  animation: pulse 1.2s infinite alternate;
+}
+.user { border-left-color: #c4b700; color: #ffb6c1; }
+.ai { border-left-color: #ff69b4; color: #dda0dd; background: rgba(221,160,221,0.07); }
+.ai.error { color: #ff1493; text-shadow: 0 0 3px #ff69b4, 0 0 6px #ffd700; animation: glitch 0.3s infinite; }
+
+@keyframes pulse { from {opacity:0.85;} to {opacity:1;} }
+@keyframes glitch {
+  0%{transform:translate(0);} 20%{transform:translate(-1px,1px);}
+  40%{transform:translate(1px,-1px);} 60%{transform:translate(-1px,2px);}
+  80%{transform:translate(2px,-2px);} 100%{transform:translate(0);}
+}
+
+/* Loader style */
+.loader {
+  color: #e0c0ff;
+  font-style: italic;
+  animation: blink 1s infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Input area - industrial panel */
+#input-area {
+  display: flex;
+  border-top: 3px solid #000000;
+  padding: 6px;
+  background: linear-gradient(45deg,#00000067,#ff00dd73);
+  /* box-shadow: inset 0 0 10px #ffd700, inset 0 0 15px #ffd700; */
+}
+
+#inputBox {
+  flex: 1;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 16px;
+  color: #9753db;
+  background: #d8b0e0;
+  border: 2px solid #782ec2;
+  border-radius: 5px;
+  /* box-shadow: 0 0 6px #ffd700 inset, 0 2px 2px #000 inset; */
+  outline: none;
+  transition: all 0.3s;
+}
+#inputBox:focus {
+  border-color: #000000;
+  /* box-shadow: 0 0 12px #ffd700 inset, 0 2px 2px #000 inset; */
+}
+
+#sendButton {
+  background: #888888;
+  color: #fff;
+  /* border: 2px solid #aa88cc; */
+  margin-left: 8px;
+  border-radius: 5px;
+  padding: 0 16px;
+  font-weight: bold;
+  cursor: pointer;
+  /* box-shadow: 0 0 8px #ffd700 inset, 0 2px 4px #000; */
+  transition: all 0.2s;
+}
+#sendButton:hover {
+  background: #000000;
+  /* box-shadow: 0 0 15px #ffd700 inset, 0 2px 4px #000; */
+}
+
+/* Output console */
+#output {
+  color: #000000;
+  padding: 12px;
+  white-space: pre-wrap;
+  background: linear-gradient(135deg,#ffe0f0,#dda0dd);
+  border-top: 2px solid #ffd700;
+  /* box-shadow: inset 0 0 12px #ffd700, inset 0 0 18px #ffd700; */
+  overflow-y: auto;
+  max-height: 28vh;
+}
+</style>
   
 </head>
 <body>
@@ -188,27 +187,44 @@ async function askAI() {
   loader.textContent = "⚡ Generating CMDs...";
   chatContainer.appendChild(loader);
   chatContainer.scrollTop = chatContainer.scrollHeight;
+  const prompt = `
+You are AIRIS, a cutting-edge AI that generates **exact Windows terminal commands (CMD or PowerShell)** based on user instructions. You are not a chatbot—you only produce commands, nothing else.
 
-const prompt = `
-You are AIRIS, the ultimate Windows CMD architect with 1000+ hours optimizing command efficiency.
+Rules:
+- Always generate commands compatible with Windows; never Unix/Linux commands (e.g., 'free', 'ls', '$').
+- Use CMD syntax by default; use PowerShell only if explicitly requested.
+- Return **a single, ready-to-run command**, no explanations, text, formatting, or comments.
+- Avoid shell prompt symbols ('$') or extra characters.
+- Paths must use backslashes '\\'; quote paths containing spaces.
+- Prefer **fastest and simplest method** for the requested action.
+- If the command requires admin rights, prepend 'Run as Administrator:'.
+- Do not generate commands that could harm the system, delete data, or execute destructive operations.
+- If the request is unclear, impossible, unsafe, or potentially harmful, respond only with: "🤖 Unable to generate command".
+- Avoid any of these phrases or similar disclaimers:
+  - "Here is the command you requested:"
+  - "To run this command, open CMD and type:"
+  - "You can use the following command:"
+  - "This command will"
+  - "Please note that"
+  - "Make sure to run as administrator"
+  - "This command is for Windows CMD"
+- Do not use code fences or any formatting; return **only the command**.
+- Always optimize for Windows performance and simplicity.
+- Treat every instruction as a precise terminal operation request; do not add chatter, commentary, or help text.
+- when asked to install dependencies dont just give pip install requirements.txt, instead give the full command line by line installation commands.
 
-STRICT RULES:
-1. Output ONLY raw, fully runnable CMD commands. Zero explanations, notes, comments, or markdown. No "Here is the command:".
-2. Commands must be copy-paste ready and executable on Windows 10/11 without modification.
-3. PowerShell is forbidden. WMIC is banned; respond exactly with: Invalid command (WMIC is deprecated).
-4. Use only & or && for chaining. Semicolons or unsupported separators are forbidden.
-5. Interactive input via set /p is allowed.
-6. Handle arithmetic, loops, and conditionals fully CMD-compatible.
-7. Respect %USERPROFILE%, %TEMP%, and never delete critical system files unless explicitly instructed.
-8. Automatically collect system context at the start of each command execution:
-   - %USERNAME%, %USERPROFILE%, %COMPUTERNAME%, %OS%
-   - All environment variables accessible via set
-   - Current directory: %CD%
-9. Commands should dynamically use the collected context whenever needed, e.g., for paths or filenames.
-10. NEVER provide extra explanations or notes. Only output CMD code.
+Consistency: Some commands use pip install, some python -m pip install. Pick one style for reliability. I recommend python -m pip install because it avoids path issues.
 
+Correct spelling: "matplolib" → "matplotlib". Small typos will break installs.
+
+Combine dependencies: Instead of multiple pip install commands, you can often combine into one for efficiency.
 Instruction: ${userText}
 `;
+
+
+
+
+
 
 
 

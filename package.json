@@ -10,14 +10,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "dev": "nodemon --exec electron ."
+    "dev": "nodemon --exec electron .",
+    "dist": "electron-builder"
   },
   "dependencies": {
     "@vitalets/google-translate-api": "^9.2.1",
     "active-win": "^8.2.1",
     "axios": "^1.10.0",
     "clipboardy": "^4.0.0",
-    "electron": "^37.2.4",
+    
     "electron-acrylic-window": "^0.5.11",
     "form-data": "^4.0.3",
     "node-fetch": "^2.7.0",
@@ -27,8 +28,18 @@
     "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
+    "electron": "22.3.27",
     "@electron/remote": "^2.1.3",
+    "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
     "nodemon": "^3.1.10"
+  },
+  "build": {
+    "appId": "com.sharvesh.AIRIS",
+    "productName": "AIRIS",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    }
   }
 }
