@@ -18,14 +18,7 @@ Think of it as your personal AI shell — faster, smarter, and built for develop
 
 ## ⚙️ Installation
 
-### 1. Clone the Repository
-
-git clone https://github.com/your-username/AIRIS.git
-cd AIRIS
-
-2. Install Dependencies
-  npm install
-  npm start
+### 1. Install the Release
 
 
 Email me if any doubts:
