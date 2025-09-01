@@ -1,4 +1,4 @@
-const { app, ipcMain, globalShortcut, clipboard, screen, shell , BrowserWindow , dialog } = require('electron');
+const { app, ipcMain, globalShortcut, clipboard, screen, shell , BrowserWindow , Tray,  Menu , dialog } = require('electron');
 const { BrowserWindow: AcrylicBrowserWindow } = require('electron');
 const path = require('path');
 const robot = require('robotjs');
@@ -18,7 +18,7 @@ const systemInstructions = require('./js-files/systemInstructions');
 let glowWindow = null;
 let lastCursorPos = null;
 let systemPrompt = '';
-
+let tray;
 (async () => {
   try {
     systemPrompt = await fs.promises.readFile(path.join(__dirname, './system_prompt.txt'), 'utf8');
@@ -128,7 +128,9 @@ function createMainWindow() {
 
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.loadFile('index.html');
-
+  mainWindow.setAlwaysOnTop(true, "screen-saver"); // 👈 "screen-saver" keeps it above everything
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); 
+  mainWindow.setFullScreenable(false);
   globalShortcut.register('Control+Shift+N', () => {
     mainWindow.webContents.send('shortcut-wink');
   });
@@ -138,6 +140,23 @@ function createMainWindow() {
     mainWindow.on('closed', () => {
       mainWindow = null;
     });
+    tray = new Tray(path.join(__dirname, 'icon.ico')); // 👈 put a 16x16 or 32x32 PNG/ICO here
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App',
+      click: () => {
+        mainWindow.show();
+      }
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+  tray.setToolTip('My Electron App');
+  tray.setContextMenu(contextMenu);
 }
 
 // ─── Input Popup ─────────────────────────────────────────────────────────
@@ -616,7 +635,7 @@ app.whenReady().then(async () => {
       }
     });
 
-    reg('Control+Alt+R', async () => {
+    reg('Control+Shift+U', async () => {
       const { detectedText } = await observeScreen(mainWindow);
       const roast = await askAI(`sarcastic roast: "${detectedText}"`);
       showMessageWindow(roast);

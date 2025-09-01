@@ -1,165 +1,160 @@
-Alright, here’s a **top-tier GitHub README.md** for your **Airis** project.
-It’s structured like a professional open-source AI automation framework repo, so it’ll make your project look clean and legit.
-
----
+Collecting workspace informationHere is a complete README for your AIRIS project, including all available features and descriptions based on your workspace:
 
 ```markdown
-# Airis — OS-Level AI Automation Layer
+# 🧠 AIRIS
 
-> **Airis** is an intelligent automation framework that fuses **low-level system control in C** with **high-level reasoning from LLaMA 3**.  
-> Think *Siri meets OS kernel hooks* — fully local, privacy-preserving, and capable of automating your machine at the deepest level.
-
----
-
-## 🚀 Features
-
-- **Real-time Machine State Monitoring** in C (CPU, RAM, active processes, etc.)
-- **AI Decision Making** via LLaMA 3 (Ollama) for contextual, human-like reasoning
-- **Two-Way Communication** between C (executor) and Python (AI brain) over a REST API
-- **Local Execution** — No cloud dependencies, your data never leaves your machine
-- **Extensible Actions** — Add your own commands, scripts, or automations
-- **Cross-Platform Potential** — Works on Linux, macOS, and Windows (with minor tweaks)
+AIRIS (**AI-Responsive Intelligent Shell**) is a next-gen AI-powered desktop assistant and terminal shell.  
+It converts **natural language instructions** into **Windows CMD/PowerShell commands**, answers questions, summarizes YouTube videos, and provides real-time screen analysis and roasting.
 
 ---
 
-## 🛠 Architecture
+## ✨ Features
 
-```
+- **Natural Language to CMD/PowerShell**  
+  Instantly convert plain English instructions into ready-to-run Windows terminal commands.  
+  No explanations, just the command you need.
 
-┌───────────────────────────┐       ┌─────────────────────────┐
-│   C System Monitor         │  ---> │ Python AI Agent (Flask) │
-│  (Low-level OS Hooks)      │       │   + LLaMA 3 via Ollama  │
-└───────────────────────────┘       └─────────────────────────┘
-↑                                     ↓
-└────────────── AI Decision  ─────────┘
+- **AI-Powered Q&A**  
+  Ask technical or general questions and get concise, context-aware answers powered by Llama3.
 
-````
+- **Screen Analysis & Roasting**  
+  AIRIS can analyze your screen, read visible text, and roast you if you're wasting time or provide insights if you're studying.
 
-**Flow:**
-1. **C Program** collects system metrics & state.
-2. Sends them to the **Python Agent** via HTTP POST.
-3. **Python Agent** prompts **LLaMA 3 (Ollama)** with state & user intent.
-4. AI responds with a specific action decision.
-5. **C Program** parses the decision and executes system commands.
+- **YouTube Video Summarizer**  
+  Paste a YouTube link and AIRIS will download subtitles, extract key points, and summarize the video in full or in one punchy line.
 
----
+- **Clipboard Sentiment Analysis**  
+  Select text anywhere, hit a hotkey, and AIRIS will analyze and summarize or answer questions about it.
 
-## 📦 Installation
+- **Overlay & Eye Tracking**  
+  Futuristic floating UI with animated eyes, idle detection, and mouse tracking.
 
-### 1️⃣ Install Dependencies
+- **Personalization & Memory**  
+  Remembers your chat history, system instructions, and settings for a tailored experience.
 
-**System Requirements**
-- C compiler (GCC / Clang)
-- Python 3.9+
-- [Ollama](https://ollama.ai) with LLaMA 3 pulled locally
+- **Roast Mode**  
+  Enable/disable sarcastic roasting for fun productivity nudges.
 
-```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
+- **Hand Gesture Detection**  
+  (Planned) Detects hand gestures for quick actions.
 
-# Pull LLaMA 3
-ollama pull llama3
-````
-
-**Python Requirements**
-
-```bash
-pip install flask requests
-```
-
-**C Requirements**
-
-* `libcurl` for HTTP requests
-  Install via:
-
-  ```bash
-  sudo apt install libcurl4-openssl-dev   # Ubuntu/Debian
-  brew install curl                       # macOS
-  ```
+- **Global Hotkeys**  
+  - `Ctrl+Space`: Open AI input window  
+  - `Ctrl+Shift+Y`: Summarize YouTube video from clipboard  
+  - `Ctrl+Alt+C`: Analyze selected clipboard text  
+  - `Ctrl+Shift+R`: Roast your current screen  
+  - `Ctrl+Alt+R`: Sarcastic roast based on screen text  
+  - `Ctrl+Shift+Z`: Quick success message  
+  - `Ctrl+Shift+I`: Open DevTools for message window
 
 ---
 
-### 2️⃣ Build & Run
+## 🖥️ UI Components
 
-**Start the AI Agent**
+- **Menu Launcher** ([menu.html](menu.html))  
+  Start/stop AIRIS, toggle features, change reply/voice language, and adjust settings.
 
-```bash
-python3 ai_agent.py
-```
+- **Main Overlay** ([index.html](index.html))  
+  Animated eyes, idle blinking, mouse tracking, and shortcut handling.
 
-**Compile and Run the C Monitor**
+- **Terminal Window** ([termi.html](termi.html))  
+  Converts instructions to Windows commands, with strict safety and formatting rules.
 
-```bash
-gcc monitor_and_decide.c -o monitor_ai -lcurl
-./monitor_ai
-```
+- **Message Popup** ([bin/messagewin.html](bin/messagewin.html))  
+  Shows AI responses, summaries, and supports speech synthesis.
 
----
-
-## 📂 Project Structure
-
-```
-airis/
-├── ai_agent.py           # Python AI Agent using Flask + Ollama
-├── monitor_and_decide.c  # C system monitor & executor
-├── README.md             # This file
-└── requirements.txt      # Python dependencies
-```
+- **Glow Window** ([glow.html](glow.html))  
+  Visual border glow effect for notifications.
 
 ---
 
-## 💡 Example Interaction
+## ⚙️ Installation
 
-**C sends:**
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/itzshrvsh/AIRIS.git
+   cd AIRIS
+   ```
 
-```
-Machine State: CPU 85%, RAM 72%, chrome.exe active
-User Input: optimize performance
-```
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
 
-**AI decides:**
+3. **Run the app**
+   ```sh
+   npm start
+   ```
 
-```
-Close Chrome to free CPU and RAM
-```
-
-**C executes:**
-
-```bash
-pkill chrome
-```
-
----
-
-## 🛠 Extending Airis
-
-* **Add More System Metrics** in C (disk usage, network I/O, GPU load)
-* **Custom AI Actions** — map AI decisions to shell commands
-* **Multi-Agent Mode** — different AI models for different tasks
+   > Requires Node.js, Electron, and Ollama (for Llama3 model).
 
 ---
 
-## ⚠ Disclaimer
+## 🛠️ Tech Stack
 
-Airis can execute system-level commands. Use responsibly — actions like `rm -rf /` will destroy your system.
-Run in a sandboxed environment if testing dangerous automations.
-
----
-
-## 📜 License
-
-MIT License © 2025 \[Your Name]
+- **Electron** — Desktop UI and system integration
+- **Node.js** — Backend logic and hotkey handling
+- **Llama3 (Ollama)** — Local AI model for Q&A and sentiment
+- **Tesseract.js** — OCR for screen analysis
+- **yt-dlp** — Subtitle extraction for YouTube summarization
+- **Sharp** — Image processing for OCR
 
 ---
 
-## 🌟 Star This Repo
+## 📚 Usage
 
-If you like this project, consider leaving a ⭐ on GitHub to support its development.
-
-```
+- **Ask AIRIS**: Use the input window or hotkeys to ask questions, get commands, or summaries.
+- **Summarize YouTube**: Copy a YouTube link, press `Ctrl+Shift+Y`, and choose full or short summary.
+- **Roast/Analyze Screen**: Press `Ctrl+Shift+R` or `Ctrl+Alt+R` for instant feedback.
+- **Terminal Commands**: Use the terminal window for natural language to Windows command conversion.
 
 ---
 
-If you want, I can also make **fancy ASCII logos and badges** at the top so it looks like a polished commercial-grade AI framework.  
-Do you want me to do that next?
+## 📝 Customization
+
+- Edit system_prompt.txt and personalization.json for custom instructions and memory.
+- Toggle features in the menu launcher.
+
+---
+
+## 📄 License
+
+MIT License  
+Copyright (c) 2025 Itzshrvsh
+
+---
+
+## 📧 Contact
+
+Email: itzshrvsh212@gmail.com
+
+---
+
+## 🚀 Contributing
+
+Pull requests and suggestions are welcome!
+
+---
+
+## 💡 Future Plans
+
+- Linux/macOS support
+- Plugin system for custom AI integrations
+- Hand gesture detection
+- More advanced screen analysis
+
+---
+
+## 🔗 Key Files
+
+- index.js — Main Electron process and hotkey logic
+- aiRequest.js — AI request handler
+- screenObserver.js — Screen OCR and analysis
+- youtubeSummarizer.js — YouTube subtitle summarizer
+- sentimentAnalyzer.js — Sentiment and Q&A logic
+- fileGenerator.js — Save generated code to desktop
+
+---
+
+AIRIS — Your AI-powered productivity shell for Windows.
 ```
