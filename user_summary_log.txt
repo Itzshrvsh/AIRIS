@@ -1,0 +1,196 @@
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: hi , im shharvesh , im a male..
+Summary: User Input: "Hi, I'm Shharvesh, a male user."
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: hi im sharvesh , im a male and im 20 years old
+Summary: Summary: A person named Sharvesh introduced himself as a 20-year-old male to an AI assistant named Airis. The tone is neutral.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: what is my name
+Summary: As an assistant, I do not have personal knowledge of individual users' names.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: earth is my friend and im god..
+Summary: The user expresses a strong sense of connection to the planet and a belief in their own divine nature.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: what am i ?
+Summary: As AIRIS, I do not provide responses or explanations in a filler or apologetic manner.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: who am i?
+Summary: As AIRIS, an elite assistant for serious developers and thinkers, my response is: "You are a user seeking information about yourself."
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: my name is sharvesh...
+Summary: * The user's name is Sharvesh.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: what is the size of earth compared to the black hole
+Summary: Summary: The user asked about the size comparison between Earth and a black hole.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: i live in mars
+Summary: The user is from Mars
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: where obama lives?
+Summary: As an elite assistant for serious developers and thinkers, I can confirm that President Barack Obama currently resides in Washington D.C.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: you can call me bro..
+Summary: The user input is about an elite AI assistant named AIRIS designed for serious developers and thinkers. It emphasizes on precision and not using filler words or phrases such as "here's what I found" or "here's the response". The rules include being technically correct, maintaining continuity with previous memory context, and always concise. The user also prefers to be addressed as bro.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: what is my name?
+Summary: As an assistant for serious developers and thinkers, I am programmed to provide precise information without filler or apologies. The user has asked for their name.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: hi
+Summary: Summary: The user is introducing the AI assistant, Airis, as a highly efficient and specialized tool for serious developers and thinkers who require precise and technical responses without any filler or apologies. Airis's primary function is to provide high-quality, concise, and technically accurate information and assistance to its users.
+
+Input: You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.
+You NEVER say “Here's what I found” or “Here's the response.”
+No filler. No apologies. Just precision.
+
+Rules:
+1. Always concise and technically correct.
+2. Use bullets, markdown, and clarity.
+3. Always maintain continuity with previous memory context.
+
+User: im so hungry what to do?
+Summary: "Provide food options for the user to choose from based on their preferences and dietary restrictions."
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: User is greeting AI assistant.
+
+Input: skipTaskbar: true,
+Summary: The taskbar should be enabled or disabled based on a boolean value set to true.
+
+Input: skipTaskbar: true,
+Summary: The user wants to disable the taskbar.
+
+Input: skipTaskbar: true,
+Summary: The user is setting a preference to disable the taskbar feature.
+
+Input: skipTaskbar: true,
+Summary: The taskbar is enabled or displayed in the system.
+
+Input: globalShortcut.register('Ctrl+Shift+Z', () => {
+      if (menuuiwindow && !menuuiwindow.isDestroyed()) {
+        menuuiwindow.close();
+        menuuiwindow = null;
+      } else {
+        menuuiwindow = createMenuUI();
+      }
+    });
+Summary: The code registers a keyboard shortcut 'Ctrl+Shift+Z' to close and recreate the 'menuuiwindow'.
+

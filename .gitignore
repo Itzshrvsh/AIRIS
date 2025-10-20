@@ -9,3 +9,4 @@ include/
 test/
 Testfolder/
 AIRIS.exe/
+.vscode/

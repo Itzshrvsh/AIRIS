@@ -6,51 +6,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&display=swap" rel="stylesheet">
   <style>
-    html {
+    html, body {
       margin: 0;
       padding: 0;
       background: transparent;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
       pointer-events: none;
     }
 
-    #message-box,
-    .window-button,
-    #message-text {
-      pointer-events: auto;
-    }
-
+    /* 🔥 Main box anchored to bottom-right */
     #message-box {
       position: fixed;
-      top: 400px;
-      left: 20px;
-      transform: translateX(200%);
+      bottom: 20px;
+      right: 20px;
       width: 360px;
       max-width: 90vw;
       background: rgba(28, 28, 30, 0.88);
       color: white;
       padding: 20px 24px;
       border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-      border: 1px solid rgba(255,255,255,0.15);
-      transition: all 0.6s ease-in-out;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       opacity: 0;
+      pointer-events: none;
+      transform: translateY(120%);
+      transition:
+        transform 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+        opacity 0.4s ease-in-out,
+        height 0.3s ease;
       z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      max-height: 500px; /* Limit full height */
+      overflow: hidden;
     }
 
+    /* When visible */
     #message-box.show {
-      transform: translate(0, 0);
       opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
     }
 
+    /* When closing */
     #message-box.closing {
-      transform: translateX(200%);
+      transform: translateY(120%);
       opacity: 0;
     }
 
@@ -58,6 +59,7 @@
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .window-button {
@@ -66,16 +68,28 @@
       border-radius: 50%;
       background-color: #ff5f56;
       box-shadow: inset 0 0 1px rgba(0,0,0,0.3);
-      cursor: pointer;
     }
-
     .window-button:nth-child(2) { background-color: #ffbd2e; }
     .window-button:nth-child(3) { background-color: #27c93f; }
 
+    /* 🔥 Text area auto-expands upward, scrolls after limit */
     #message-text {
       font-size: 15px;
       line-height: 1.5;
       margin-top: 10px;
+      overflow-y: auto;
+      transition: max-height 0.2s ease-out;
+      flex-grow: 1;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+
+    #message-text::-webkit-scrollbar {
+      width: 6px;
+    }
+    #message-text::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
     }
 
     #progress-bar {
@@ -85,13 +99,14 @@
       border-radius: 100px;
       overflow: hidden;
       margin: 16px 0 8px 0;
+      flex-shrink: 0;
     }
 
     #progress-fill {
       height: 100%;
       width: 100%;
       background: #0af;
-      animation: shrink 8s linear forwards; /* Auto close after 8s */
+      animation: shrink 8s linear forwards;
     }
 
     @keyframes shrink {
@@ -103,7 +118,7 @@
 <body>
   <div id="message-box" role="dialog" aria-live="polite" tabindex="0">
     <div id="window-controls">
-      <div class="window-button" onclick="closeWindow()"></div>
+      <div class="window-button"></div>
       <div class="window-button"></div>
       <div class="window-button"></div>
     </div>
@@ -118,19 +133,35 @@
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+    // 🔥 Dynamic height adjuster — keeps bottom fixed
+    function adjustHeight() {
+      textEl.style.maxHeight = 'none'; // reset first
+      const fullHeight = box.scrollHeight;
+      const maxAllowed = 500; // same as max-height
+      if (fullHeight > maxAllowed) {
+        box.style.height = maxAllowed + "px";
+        textEl.style.maxHeight = (maxAllowed - 80) + "px"; // leave room for controls
+      } else {
+        box.style.height = "auto";
+        textEl.style.maxHeight = "none";
+      }
+    }
+
     async function displayMessageFlow(msg) {
+      textEl.textContent = msg;
+      adjustHeight();
+
       box.classList.add('show');
       box.focus();
-      textEl.textContent = msg;
 
       // 🔥 Auto copy to clipboard
       clipboard.writeText(msg);
 
-      await sleep(8000); // show for 8s
+      await sleep(8000);
 
       box.classList.remove('show');
       box.classList.add('closing');
-      await sleep(400);
+      await sleep(1000);
       window.close();
     }
 
@@ -139,7 +170,10 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') window.close();
+      if (e.key === 'Escape') {
+        box.classList.remove('show');
+        box.classList.add('closing');
+      }
     });
   </script>
 </body>

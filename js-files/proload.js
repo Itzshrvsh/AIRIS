@@ -16,7 +16,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 // keep api separate if you want
-contextBridge.exposeInMainWorld('api', {
-  requestWink: (data) => ipcRenderer.invoke('do-wink', data),
-  askAI: async (text) => ipcRenderer.invoke('ask-ai', text)
+
+contextBridge.exposeInMainWorld("electronAPI", {
+  resizeWindow: (width, height) => ipcRenderer.send("resize-window", { width, height }),
+  setIgnoreMouse: (ignore) => ipcRenderer.send("set-ignore-mouse", ignore)
+});
+
+contextBridge.exposeInMainWorld("electronAPI", {
+  askAI: (input) => ipcRenderer.invoke("ask-ai2", input),
+  focusInput: (callback) => ipcRenderer.on("focus-input", callback),
 });

@@ -1,0 +1,6 @@
+{
+    "watch": ["."],
+    "ignore": ["*.log", "node_modules", "dist"],
+    "exec": "electron ."
+  }
+  

@@ -1,131 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Ask MetaAI</title>
+  <meta charset="UTF-8" />
+  <title>AIRIS Command Interface</title>
   <style>
     html, body {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-family: 'Segoe UI', sans-serif;
       color: white;
-      height: 100vh;
-      background: transparent;
-      overflow: hidden;
+      user-select: none;
+    }
+
+    /* === Floating Glass Panel === */
+    .window {
+      width: 640px;
+      min-height: 320px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      box-shadow: 0 0 60px rgba(0, 255, 255, 0.15),
+                  0 0 100px rgba(255, 0, 255, 0.1);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      padding: 30px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .window:hover {
+      box-shadow: 0 0 90px rgba(0, 255, 255, 0.25),
+                  0 0 140px rgba(255, 0, 255, 0.15);
+    }
+
+    #title {
+      font-size: 26px;
+      margin-bottom: 20px;
+      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-size: 400%;
+      animation: flow 6s linear infinite;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    @keyframes flow {
+      from { background-position: 0%; }
+      to { background-position: 400%; }
     }
 
     #inputBox {
       width: 100%;
-      max-width: 600px;
-      height: 100px;
-      padding: 14px;
-      font-size: 18px;
-      color: #000;
-      background-color: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(0, 0, 0, 0.2);
-      border-radius: 14px;
-      backdrop-filter: blur(10px);
+      min-height: 100px;
+      max-height: 200px;
+      padding: 14px 18px;
+      font-size: 17px;
+      line-height: 1.4;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
       resize: none;
-      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
       outline: none;
+      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    #inputBox:focus {
+      border-color: #00e0ff;
+      box-shadow: 0 0 12px rgba(0, 224, 255, 0.5);
     }
 
     #askButton {
       margin-top: 20px;
-      padding: 14px 28px;
+      padding: 12px 40px;
       font-size: 16px;
-      font-weight: 500;
+      font-weight: 600;
       border: none;
-      border-radius: 24px;
-      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+      border-radius: 30px;
+      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
       background-size: 400%;
-      color: black;
+      color: #000;
       cursor: pointer;
-      transition: all 0.3s ease-in-out;
-      position: relative;
-      z-index: 1;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: pulse 4s linear infinite;
     }
 
-    #askButton:hover {
-      animation: pulseGlow 3s linear infinite;
-    }
-
-    @keyframes pulseGlow {
+    @keyframes pulse {
       0% { background-position: 0%; }
       100% { background-position: 400%; }
     }
 
-    #loader {
-      display: none;
-      width: 160px;
-      height: 15px;
-      margin-top: 30px;
-      background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
-      background-size: 400%;
-      animation: loaderAnim 3s linear infinite;
-      border-radius: 100px;
+    #askButton:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
     }
 
-    @keyframes loaderAnim {
+    #loader {
+      display: none;
+      width: 180px;
+      height: 8px;
+      margin-top: 24px;
+      border-radius: 100px;
+      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
+      background-size: 400%;
+      animation: loader 2.2s linear infinite;
+    }
+
+    @keyframes loader {
       0% { background-position: 0%; }
       100% { background-position: 400%; }
     }
   </style>
 </head>
-
 <body>
-  <textarea id="inputBox" placeholder="Ask MetaAI something smart..."></textarea>
-  <button id="askButton" onclick="askAI()">🚀 Ask MetaAI</button>
-  <div id="loader"></div>
+  <div class="window">
+    <div id="title">🧠 AIRIS Command Interface</div>
+    <textarea id="inputBox" placeholder="Type your query or command..."></textarea>
+    <button id="askButton">🚀 Engage</button>
+    <div id="loader"></div>
+  </div>
 
   <script>
     const { ipcRenderer } = require('electron');
-  
+    const inputBox = document.getElementById('inputBox');
+    const loader = document.getElementById('loader');
+    const askButton = document.getElementById('askButton');
+
+    askButton.addEventListener('click', askAI);
+    inputBox.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        askAI();
+      }
+    });
+
     async function askAI() {
-      const inputBox = document.getElementById("inputBox");
-      const loader = document.getElementById("loader");
       const inputText = inputBox.value.trim();
-  
       if (!inputText) return;
-  
+
+      inputBox.disabled = true;
+      askButton.disabled = true;
+      loader.style.display = 'block';
+
+      const systemInstructions = `
+You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: ${inputText}
+      `.trim();
+
       try {
-        inputBox.disabled = true;
-        loader.style.display = "block";
-  
-        const systemInstructions = `
-  You are MetaAI — an elite, high-performance assistant for serious developers and thinkers.
-  
-  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.
-  
-  Rules:
-  1. Never apologize.
-  2. Never add filler.
-  3. Format clearly: use bullets, code, clarity.
-  4. Respond like a senior engineer or domain pro.
-  5. Never give half-assed answers.
-  
-  User: ${inputText}
-        `.trim();
-  
         const response = await ipcRenderer.invoke('ask-ai', systemInstructions);
-  
-        console.log("AI Response:", response);
-  
+        ipcRenderer.send('memory-log', inputText);
         ipcRenderer.send('show-sentiment-message', response);
         ipcRenderer.send('show-glow-window');
+        console.log("✅ Response:", response);
       } catch (err) {
         console.error("🔥 AI error:", err);
-        alert("MetaAI blew up. Probably your fault. Try again.");
+        alert("AIRIS crashed. Probably your fault. Try again.");
       } finally {
+        loader.style.display = 'none';
         inputBox.disabled = false;
-        loader.style.display = "none";
+        askButton.disabled = false;
+        inputBox.value = '';
       }
     }
   </script>
-  
 </body>
 </html>

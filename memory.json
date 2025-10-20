@@ -1,8 +1,3 @@
 {
-  "chatHistory": [
-    {
-      "time": "2025-07-10T15:25:32.044Z",
-      "message": "This code snippet defines an IPC (Inter-Process Communication) event listener for displaying a message. It sets up a timer to close the current window after 30 seconds.\n\nRecommendation: Consider adding error handling and validation for the `settings` object to ensure it is properly structured before attempting to access its properties."
-    }
-  ]
+  "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: hi": " Hello! How can I assist you today? "
 }

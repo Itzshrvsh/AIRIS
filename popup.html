@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Popup</title>
+<style>
+  body {
+    margin: 0;
+    background: rgba(30,30,32,0.95);
+    color: white;
+    font-family: Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+
+    /* Smooth fade + slight scale */
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  body.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  button {
+    margin: 5px 0;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  button:hover { background: #0af; }
+
+  #inputBox { display: none; margin-top: 8px; }
+  input { width: 100%; padding: 5px; border-radius: 5px; border: none; }
+</style>
+</head>
+<body>
+  <button id="askAiBtn">Ask AI</button>
+  <button id="aiSearchBtn">AI Search</button>
+
+  <div id="inputBox">
+    <input id="userQuery" placeholder="Type your question..." />
+    <button id="sendBtn">Send</button>
+  </div>
+
+<script>
+const { ipcRenderer } = require('electron');
+const body = document.body;
+
+// Trigger smooth fade-in on load
+window.addEventListener('DOMContentLoaded', () => {
+  requestAnimationFrame(() => body.classList.add('show'));
+});
+
+document.getElementById('askAiBtn').addEventListener('click', () => {
+  ipcRenderer.send('popup-choice', 'ask-ai');
+});
+
+document.getElementById('aiSearchBtn').addEventListener('click', () => {
+  document.getElementById('inputBox').style.display = 'block';
+  document.getElementById('askAiBtn').style.display = 'none';
+  document.getElementById('aiSearchBtn').style.display = 'none';
+  document.getElementById('userQuery').focus();
+});
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const query = document.getElementById('userQuery').value.trim();
+  if (query) ipcRenderer.send('popup-choice', 'ai-search', query);
+});
+</script>
+</body>
+</html>

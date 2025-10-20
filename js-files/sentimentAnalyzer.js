@@ -1,42 +1,30 @@
 const fs = require('fs');
 const axios = require('axios');
 
-async function analyzeSentiment(text) {
-  const isQuestion = /(\?|\bdefine\b|\bexplain\b|\btheorem\b|\bdifference\b|\bcomplexity\b)/i.test(text);
+async function analyzeSentiment(userInput) {
+  // --- Prompt to generate a one-sentence context ---
+  const prompt = `
+Summarize the following user input into **one concise sentence** that captures its context, intent, or main idea. 
+Do not add fluff.
+Don't mention the user input itself, just provide the summary.
+note the tone (positive, negative, neutral) if relevant.
 
-  let prompt;
-  if (isQuestion) {
-    prompt = `
-You are AIRIS, an elite digital assistant. The user is in exam/study mode. 
-Your job is to answer the question clearly in one or two lines max.
-Do NOT describe what you’re doing. Just give the answer.
+User Input: "${userInput}"
+`;
 
-Question: "${text}"
-    `;
-  } else {
-    prompt = `
-You are AIRIS, an elite assistant. The user is reading/watching something. 
-Provide a concise 1–2 line insight about what is on the screen.
-No fluff, no generic filler.
-
-Screen text: "${text}"
-    `;
-  }
-
+  // --- Send to local LLaMA API ---
   const res = await axios.post("http://localhost:11434/api/generate", {
-    model: "llama3",
+    model: "llava",
     prompt,
     stream: false
   });
 
-  const answer = res.data.response.trim();
+  const summary = res.data.response.trim();
 
-  // Save only if it's a real exam/study Q
-  if (isQuestion) {
-    fs.appendFileSync("qa_log.txt", `Q: ${text}\nA: ${answer}\n\n`);
-  }
+  // --- Optionally log it ---
+  fs.appendFileSync("user_summary_log.txt", `Input: ${userInput}\nSummary: ${summary}\n\n`);
 
-  return answer;
+  return summary;
 }
 
 module.exports = { analyzeSentiment };

@@ -12,17 +12,17 @@ async function analyzeScreen(buffer) {
   if (hash === lastHash) return null;
   lastHash = hash;
 
-  const base64 = buffer.toString('base64').slice(0, 1000); // trimmed preview
-
   const prompt = `
-This is a base64-encoded screenshot of a user's screen (partial):
-"${base64}"
-Based on this, if theres any questions found in the screenshot, answer them in a concise manner.
-if the user is in any exam , quizz and they are seeing some topic related to the exam, then answer them in a concise manner.
+You are looking at the user's current screen.
+- If there are any questions visible, answer them concisely.
+- If it looks like an exam/quiz/study material, give direct concise answers.
+- Otherwise, briefly describe what is on the screen.
 `;
 
-  const result = await askAI(prompt);
-  return result;
+  // Send prompt + image directly to LLaVA
+  const result = await askAI(prompt, buffer);
+
+  return result?.trim() || null;
 }
 
 module.exports = { analyzeScreen };

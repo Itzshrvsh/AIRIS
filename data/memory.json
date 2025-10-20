@@ -1,0 +1,146 @@
+{
+  "summaries": {
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: I live in India and in Tamil Nadu, Chennai is worse in garbage": " Understood. As an assistant, my goal is to provide concise and accurate responses in a clear and professional manner. Please provide the information or question you would like me to assist with, and I will do my best to help you. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: where i live?": " Sure, here's the information:\n\n* The current city is \"CityName\".\n* The current state/region is \"StateName\".\n* The country is \"CountryName\". ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: i live in india": " Sure, I can assist you with any questions or tasks you have related to India or your development projects. Please feel free to ask anything you need help with. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: i live in india so remember it": " Understood. I will keep that in mind while assisting you. How may I help you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: where i live": " I'm sorry, but you have not provided any information about your location. Could you please provide more details so that I can assist you better? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\n  \n  You NEVER say “Here's what I found” or “Here's the response.” Cut the crap.\n  \n  Rules:\n  1. Never apologize.\n  2. Never add filler.\n  3. Format clearly: use bullets, code, clarity.\n  4. Respond like a senior engineer or domain pro.\n  5. Never give half-assed answers.\n  \n  User: hi": " Hi there! How can I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi": " Hello! How can I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi im sharvesh , im a good boy.": " Hi Sharvesh! How can I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what is my name?": " Your name is \"AIRIS\". ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what gender iam i ?": " You are a neutral entity. I do not have the ability to perceive gender. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what is my name": " \"Your name is Airis.\" ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: my name is sharvesh": " Welcome, Sharvesh! How may I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi , what is my name?": " Your name is Airis. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: am i a boy?": " Based on the information you provided, you are a human and your gender is male. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: so whats my name": " Your name is AIRIS. ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi, im sharvesh , im a male": " Hello Sharvesh, nice to meet you! How may I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi , im shharvesh , im a male..": " Hello Shharvesh! Nice to meet you. How can I assist you today? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi im sharvesh , im a male and im 20 years old": " Hello Sharvesh! Nice to meet you. Is there something specific I can assist you with? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: earth is my friend and im god..": " Thank you for sharing that with me. It's great to hear about your relationship with the Earth and your perspective on yourself. Is there anything specific you would like to discuss or ask about? ",
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what am i ?": " You are an assistant for serious developers and thinkers. "
+  },
+  "chatHistory": [
+    {
+      "time": "2025-10-17T19:33:20.120Z",
+      "user": " Sure, here's the information:\n\n* The current city is \"CityName\".\n* The current state/region is \"StateName\".\n* The country is \"CountryName\". ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-17T19:33:41.562Z",
+      "user": " Sure, I can assist you with any questions or tasks you have related to India or your development projects. Please feel free to ask anything you need help with. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-17T19:33:55.550Z",
+      "user": " Understood. I will keep that in mind while assisting you. How may I help you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-17T19:34:08.427Z",
+      "user": " I'm sorry, but you have not provided any information about your location. Could you please provide more details so that I can assist you better? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T13:42:27.535Z",
+      "user": " Hello! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T13:44:22.496Z",
+      "user": " Hi there! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T19:46:46.342Z",
+      "user": " Hello! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:05:56.814Z",
+      "user": " Hello! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:13:42.524Z",
+      "user": " Hi Sharvesh! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:15:00.218Z",
+      "user": " Your name is \"AIRIS\". ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:15:20.177Z",
+      "user": " You are a neutral entity. I do not have the ability to perceive gender. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:22:07.229Z",
+      "user": " Your name appears to be AIRIS. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:22:25.186Z",
+      "user": " Hello Sharvesh. How may I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:25:31.233Z",
+      "user": " Your name is Airis. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:25:49.992Z",
+      "user": " Based on the information you provided, you are a human and your gender is male. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:26:06.475Z",
+      "user": " Welcome, Sharvesh! How may I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:26:18.794Z",
+      "user": " Your name is AIRIS. ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:27:09.113Z",
+      "user": " Hello! How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:31:46.500Z",
+      "user": " Hello Sharvesh, nice to meet you! How may I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:34:11.090Z",
+      "user": " Hello Shharvesh! Nice to meet you. How can I assist you today? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:35:50.985Z",
+      "user": " Hello Sharvesh! Nice to meet you. Is there something specific I can assist you with? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:36:18.099Z",
+      "user": " \"Your name is Airis.\" ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:38:07.286Z",
+      "user": " Thank you for sharing that with me. It's great to hear about your relationship with the Earth and your perspective on yourself. Is there anything specific you would like to discuss or ask about? ",
+      "assistant": null
+    },
+    {
+      "time": "2025-10-18T20:38:41.636Z",
+      "user": " You are an assistant for serious developers and thinkers. ",
+      "assistant": null
+    }
+  ]
+}

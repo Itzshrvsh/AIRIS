@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="island" id="island">
+  <div class="content">
+    <span>⚡ Airiss</span>
+    <div class="options">
+      <button>Profile</button>
+      <button>Settings</button>
+      <button>Logout</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const island = document.getElementById("island");
+
+  function toggleIsland() {
+    island.classList.toggle("expanded");
+
+    setTimeout(() => {
+      const rect = island.getBoundingClientRect();
+      window.electronAPI.resizeWindow(rect.width, rect.height);
+    }, 300);
+  }
+
+  island.addEventListener("click", toggleIsland);
+
+  // 👇 only allow mouse on island
+  island.addEventListener("mouseenter", () => {
+    window.electronAPI.setIgnoreMouse(false);
+  });
+
+  island.addEventListener("mouseleave", () => {
+    window.electronAPI.setIgnoreMouse(true);
+  });
+
+  // initial window sizing
+  const rect = island.getBoundingClientRect();
+  window.electronAPI.resizeWindow(rect.width, rect.height);
+
+  // start in "ignore" mode
+  window.electronAPI.setIgnoreMouse(true);
+</script>
+</body>
+</html>
