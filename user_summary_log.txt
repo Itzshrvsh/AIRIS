@@ -194,3 +194,131 @@ Input: globalShortcut.register('Ctrl+Shift+Z', () => {
     });
 Summary: The code registers a keyboard shortcut 'Ctrl+Shift+Z' to close and recreate the 'menuuiwindow'.
 
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: create a file py code to add 2 numbers
+Summary: The user has requested for assistance in creating a Python script that adds two numbers.
+
+Input: Earth is a habitable place to humans, but why its a habitable planet?
+Summary: Earth is considered habitable for humans because it provides essential resources and has an atmosphere that supports life.
+
+Input: Earth is a habitable place to humans, but why its a habitable planet?
+Summary: Earth is a suitable environment for human life due to factors such as oxygen in the atmosphere and water on the surface.
+
+Input: await createMenuWindow();
+    startAppWatcher();
+Summary: The code creates a menu window and starts an app watcher.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: Hello, how can I assist you?
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: why println will not work in py
+Summary: User is asking about why the `println` function does not work in Python.
+
+Input: you are an elite, high-performance assistant who responds to users input.
+        Be concise, technical, and contextual with analysing the user sentiment and answering likewise.
+        Never use filler like "Here's your answer" or any other to describe what you are going to say.
+        User: what are steps to open opera and open youtube website and type in top 5 games for pc
+Summary: Summarize user input into one concise sentence: The user is requesting instructions on how to open Opera browser, access YouTube, and search for the top five PC games.
+
+Input: you are an elite, high-performance assistant who responds to users input.
+        Be concise, technical, and contextual with analysing the user sentiment and answering likewise.
+        Never use filler like "Here's your answer" or any other to describe what you are going to say.
+        User: what are steps to open opera and open youtube website and type in top 5 games for pc
+Summary: To open Opera browser, go to the Start menu or desktop icon and click on it. Then, navigate to YouTube in the search bar and type "top 5 games for PC" to find a list of recommended games.
+
+Input: you are an elite, high-performance assistant who responds to users input.
+        Be concise, technical, and contextual with analysing the user sentiment and answering likewise.
+        Never use filler like "Here's your answer" or any other to describe what you are going to say.
+        User: ipcRenderer.send("show-sentiment-message", response);
+Summary: A JavaScript function is called using `ipcRenderer` to send a message to display sentiment, with the variable `response` being passed as an argument.
+
+Input: you are an elite, high-performance assistant who responds to users input.
+              Be concise, technical, and contextual with analysing the user sentiment and answering likewise.
+              Never use filler like "Here's your answer" or any other to describe what you are going to say.
+              User: what are steps to open opera and open youtube website and type in top 5 games for pc
+Summary: Summary: Assist user with opening Opera browser, visiting YouTube, and searching for top 5 PC games using technical instructions.
+
+Input: You are an elite, high-performance automation assistant. 
+          Analyze the user's input and return only **explicit, step-by-step actions** required to perform the task on a computer. 
+          - Use clear, sequential instructions. 
+          - Do NOT add filler, explanations, or commentary. 
+          - Focus on actionable steps for automating UI interactions. 
+          - Include clicks, typing, navigation, and selections as needed. 
+          - Keep the format concise, one action per line.
+
+          User request: what are steps to open opera and open youtube website and type in top 5 games for pc
+          Respond with steps only.
+Summary: To open Opera browser and navigate to YouTube website to search for top 5 PC games:
+1. Open Opera browser
+2. Click on address bar
+3. Type "youtube.com" and press Enter
+4. In the search bar, type "top 5 pc games" and press Enter
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: what is the app name for operagx
+Summary: Assistant required to provide technical information on a specific software application in a concise manner without using filler language.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: if i want to open opera GX application in my desktop using py what to use
+Summary: User asking for help on how to open the Opera GX application in their desktop using Python.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: This is a message from the user to an AI named AIRIS, instructing it to be concise, technical, and maintain memory continuity when providing information, avoiding filler language, and greeting the user with a friendly "Hi".
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: The user is greeting the AI assistant named Airis, which is a sophisticated and advanced AI designed for high-performance tasks and features memory continuity to maintain context across interactions.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: whats the name of the process operagx browser in taskmanager
+Summary: User requesting information about Operagx browser's process name within Task Manager.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: The user is greeting the AI named Airis, emphasizing its role as a high-performance assistant with memory continuity.
+
+Input: hi
+Summary: A friendly greeting. (Neutral)
+
+Input: hi
+Summary: "A friendly greeting."
+
+Input: hi
+Summary: The message is a greeting, which can be positive or neutral in tone.
+
+Input: hi
+Summary: Hello! How can I assist you today?
+
+Input: hi
+Summary: The user initiates a greeting.
+
+Input: what is the size of earth
+Summary: The user inquired about the size of Earth.
+
+Input: You are AIRIS — an elite, high-performance assistant.
+Be concise, technical, and contextual with memory continuity.
+Never use filler like "Here's your answer".
+User: hi
+Summary: This input is a message to AI assistant named AIRIS, which aims to be a high-performance assistant with strong memory continuity.
+

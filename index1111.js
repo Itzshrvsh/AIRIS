@@ -17,7 +17,6 @@ const userName = "sharvesh";
 const stringSimilarity = require("string-similarity"); // npm i string-similarity
 const ws = require("windows-shortcuts");
 const axios = require('axios');
-const clipboardy = require('clipboardy');
 // ─── Local imports ──────────────────────────────────────────────
 const { askAI } = require("./js-files/aiRequest");
 const { analyzeScreen , setMainWindow } = require('./js-files/screenObserver');
@@ -437,16 +436,6 @@ function typeSafe(text) {
   }
 }
 
-
-async function getCoords(scriptName) {
-  return new Promise((resolve, reject) => {
-    exec(`python ${scriptName}`, (err, stdout) => {
-      if (err) return reject(err);
-      const [x, y] = stdout.trim().split(',').map(Number);
-      resolve({ x, y });
-    });
-  });
-}
 async function getCaretCoords() {
   return new Promise((resolve, reject) => {
     exec('python get_caret_coords.py', (err, stdout) => {
@@ -456,20 +445,13 @@ async function getCaretCoords() {
     });
   });
 }
-ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
+ipcMain.handle('Neuralis-ai', async (event, userInput) => {
   try {
     // 1️⃣ Ask LLaMA for app name
     const prompt = `
-    You are AIRIS, a precise assistant for opening applications on Windows.
-    The user provides a command like "open Chrome" or "launch VS Code".
-    
-    INSTRUCTIONS:
-    - Respond with ONLY the **exact official app name** as it appears in the system (e.g.,"opera", "Google Chrome", "Visual Studio Code", "Spotify").
-    - DO NOT include numbers, bullet points, extra words, explanations, or punctuation.
-    - Return **one app only**. 
-    - If you are unsure, respond with "UNKNOWN_APP".
-    
-    User command: "${userInput}"
+      You are AIRIS, a precise assistant for opening applications on Windows.
+      User command: "${userInput}"
+      Return ONLY the exact official app name, or UNKNOWN_APP.
     `.trim();
 
     const res = await axios.post("http://localhost:11434/api/generate", {
@@ -478,38 +460,31 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
       stream: false
     });
 
-    const aiResponse = res.data?.response?.trim() || "UNKNOWN_APP";
-
-    if (aiResponse === "UNKNOWN_APP") return "Could not determine app to launch.";
+    const appName = res.data?.response?.trim() || "UNKNOWN_APP";
+    if (appName === "UNKNOWN_APP") return "Could not determine app to launch.";
 
     // 2️⃣ Launch app
-    exec(`start "" "${aiResponse}"`);
-    console.log(`Launched: ${aiResponse}`);
+    exec(`start "" "${appName}"`);
+    console.log(`Launched: ${appName}`);
     await new Promise(r => setTimeout(r, 2000)); // wait for app to open
 
-    // 3️⃣ Special Gmail automation
-    if (userInput.toLowerCase().includes('gmail')||userInput.toLowerCase().includes('email')||userInput.toLowerCase().includes('mail')) {
-
-      // Focus browser and new tab
+    // 3️⃣ Gmail automation
+    if (userInput.toLowerCase().includes('gmail')) {
+      // Open new tab and go to Gmail
       robot.keyTap('t', 'control');
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 1000));
       robot.typeString('gmail.com');
       robot.keyTap('enter');
       await new Promise(r => setTimeout(r, 5000)); // wait for Gmail to load
 
-      // 4️⃣ Get Compose button coordinates (using Python for initial)
-      const composeCoords = await getCoords('get_compose_coords.py');
-      robot.moveMouse(composeCoords.x, composeCoords.y);
-      robot.mouseClick();
-      await new Promise(r => setTimeout(r, 500));
-
-      // 5️⃣ Type recipient
-      // 1️⃣ Ask LLaMA to extract only the email address from the input
+      // 4️⃣ Extract email, subject, and body from LLaMA
       const emailPrompt = `
-      You are AIRIS. From the following text, extract ONLY the recipient's email address.
-      User input: "${userInput}"
-      Respond with the email address only, no extra words, punctuation, or explanation.
-      If you can't find a valid email, respond with UNKNOWN_EMAIL.
+        You are AIRIS. From the user input, extract:
+        - recipient email
+        - subject
+        - body content
+        Respond ONLY with JSON: { "to": "...", "subject": "...", "body": "..." }.
+        User input: "${userInput}"
       `.trim();
 
       const emailRes = await axios.post("http://localhost:11434/api/generate", {
@@ -518,106 +493,59 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
         stream: false
       });
 
-      const recipientEmail = emailRes.data?.response?.trim() || "UNKNOWN_EMAIL";
-
-      if (recipientEmail === "UNKNOWN_EMAIL") {
-        console.warn("AIRIS could not determine recipient email.");
-      } else {
-        // 2️⃣ Type email using RobotJS
-        robot.typeString(recipientEmail);
-        robot.keyTap('enter');
-        await new Promise(r => setTimeout(r, 300));
+      let emailDetails;
+      try {
+        emailDetails = JSON.parse(emailRes.data.response);
+      } catch {
+        console.warn("AIRIS could not parse email details, using placeholders.");
+        emailDetails = { to: "", subject: "", body: "" };
       }
 
+      // 5️⃣ Compose email dynamically
+      const { x: startX, y: startY } = robot.getMousePos(); // starting point
+
+      // Type recipient
+      
+      // 1️⃣ Type recipient
+      robot.typeString(emailDetails.to);
+      robot.keyTap('enter');
+      await new Promise(r => setTimeout(r, 300));
+
+      // 2️⃣ Get caret coordinates from Python (after typing recipient)
       const caretCoords = await getCaretCoords(); // your Python script returns current caret x,y
-      // 6️⃣ Type subject (few pixels below Compose)
-      const subjectPrompt = `
-      You are AIRIS, a precise AI assistant for email automation.
-      From the following user input, generate a concise **subject line** for the email they want to send.
-      - Do NOT include the recipient email, greetings, or extra explanations.
-      - Make it short, clear, and professional.
-      - Respond with only the subject line.
-      - If the input does not contain any clear message, respond with "UNKNOWN_SUBJECT".
 
-      User input: "${userInput}"
-      `.trim();
+      // 3️⃣ Move mouse slightly below caret to start subject
+      robot.moveMouse(caretCoords.x, caretCoords.y + 50); // 50 pixels down
+      robot.mouseClick();
+      robot.typeString(emailSubject);
+      await new Promise(r => setTimeout(r, 300));
+
+      // 4️⃣ Move further down for email body
+      robot.moveMouse(caretCoords.x, caretCoords.y + 100); // adjust as needed
+      robot.mouseClick();
+      robot.typeString(emailDetails.body);
 
 
-      // 2️⃣ Send prompt to LLaMA
-      const subjectRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llama3",
-        prompt: subjectPrompt,
-        stream: false
+      // Optional: click Send button via Python script
+      const sendCoords = await new Promise((resolve, reject) => {
+        exec('python get_send_coords.py', (err, stdout) => {
+          if (err) reject(err);
+          const [x, y] = stdout.trim().split(',').map(Number);
+          resolve({ x, y });
+        });
       });
-      
-      const emailSubject = subjectRes.data?.response?.trim() || "UNKNOWN_SUBJECT";
-      let composeCoordsub;
-      if (emailSubject === "UNKNOWN_SUBJECT") {
-        alert("AIRIS could not determine email subject.");
-      } else {
-        composeCoordsub = await getCoords('get_subject_coords.py');
-        robot.moveMouse(composeCoordsub.x, composeCoordsub.y);
-        robot.mouseClick();
-        robot.typeString(emailSubject);
-        await new Promise(r => setTimeout(r, 300));
-        
-      }
-      
-
-      // 7️⃣ Type body (a bit further below)
-      
-      const bodyPrompt = `
-      You are AIRIS, a precise AI assistant for email automation.
-      From the following user input, generate the **body/content** of the email they want to send.
-      - Do NOT include the recipient email or subject line.
-      - Keep it concise, clear, and professional.
-      - Respond only with the email content.
-      - If the input does not contain a clear message to send, respond with "UNKNOWN_BODY".
-      - Always use there recipient's name after the best regard dont use [your name] at anycost find a name in the context itself.
-      - Keep it relevant to the user's intent.
-      - be profressional and polite.
-
-      User input: "${userInput}"
-      `.trim();
-      
-      // 2️⃣ Send prompt to LLaMA
-      const bodyRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llama3",
-        prompt: bodyPrompt,
-        stream: false
-      });
-      
-      const emailbody = bodyRes.data?.response?.trim() || "UNKNOWN_body";
-      
-      if (emailbody === "UNKNOWN_body") {
-        alert("AIRIS could not determine body.");
-      } else {
-        // move to subject/body field
-        robot.moveMouse(composeCoordsub.x, composeCoordsub.y);
-        robot.mouseClick();
-        await new Promise(r => setTimeout(r, 100)); // ensure field is focused
-      
-        // copy body to clipboard using Electron clipboard
-        clipboard.writeText(emailbody);
-      
-        // paste with RobotJS
-        robot.keyTap('v', 'control');
-        await new Promise(r => setTimeout(r, 300));
-      }
-      
-      // 8️⃣ Click Send button using Python script for coordinates
-      const sendCoords = await getCoords('get_send_coords.py');
       robot.moveMouse(sendCoords.x, sendCoords.y);
       robot.mouseClick();
     }
 
-    return `AIRIS launched: ${aiResponse}`;
+    return `AIRIS launched: ${appName}`;
 
   } catch (err) {
     console.error("AIRIS AI error:", err);
     return "AIRIS encountered an error.";
   }
 });
+
 // MAIN PROCESS (in Electron)
 ipcMain.on("settings-updated", (event, newSettings) => {
   messageWindow.webContents.send("update-settings", newSettings);

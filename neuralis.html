@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AIRIS Command Interface</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background: #121212; 
+      color: white; 
+      display:flex; 
+      flex-direction: column; 
+      align-items:center; 
+      justify-content:center; 
+      height:100vh; 
+      gap:12px;
+    }
+    #inputBox { width:400px; height:100px; padding:10px; font-size:16px; border-radius:8px; background:#222; color:#fff; border:none; resize:none; }
+    #askButton { padding:10px 20px; border:none; border-radius:8px; background:#0af; color:#000; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <textarea id="inputBox" placeholder="Type your query..."></textarea>
+<button id="askButton">🚀 Ask AIRIS</button>
+
+<script>
+  const { ipcRenderer } = require('electron');
+  const inputBox = document.getElementById('inputBox');
+  const askButton = document.getElementById('askButton');
+  
+  async function sendToAIRIS() {
+    const text = inputBox.value.trim();
+    if (!text) return alert("Type something first!");
+  
+    // Disable button to prevent spamming, but keep input usable
+    askButton.disabled = true;
+  
+    try {
+      const response = await ipcRenderer.invoke('Neuralis-ai', text);
+      alert("AIRIS says: " + response);
+      // Auto-close the window after 2 seconds
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert("Error contacting AIRIS.");
+    } finally {
+      askButton.disabled = false;
+      inputBox.value = '';      // clear after sending
+      inputBox.focus();          // refocus so user can type again
+    }
+  }
+  
+  // Click or Enter triggers the request
+  askButton.addEventListener('click', sendToAIRIS);
+  inputBox.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendToAIRIS();
+    }
+  });
+  </script>
+</body>
+</html>

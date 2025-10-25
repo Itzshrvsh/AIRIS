@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        background: #121212;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        height: 100%;
+        margin: 0;
+      }
+      input {
+        width: 80%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+        margin-bottom: 12px;
+        background: #1e1e1e;
+        color: #fff;
+        font-size: 14px;
+      }
+      button {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 6px;
+        background: #0078ff;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #005fcc;
+      }
+    </style>
+  </head>
+  <body>
+    <input id="userInput" placeholder="Type your instruction (e.g., 'Give me 10 key points')" />
+    <button id="submitBtn">Submit</button>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+      const input = document.getElementById("userInput");
+      const btn = document.getElementById("submitBtn");
+
+      btn.addEventListener("click", () => {
+        ipcRenderer.send("user-input-response", input.value);
+        window.close();
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          ipcRenderer.send("user-input-response", input.value);
+          window.close();
+        }
+      });
+
+      input.focus();
+    </script>
+  </body>
+</html>

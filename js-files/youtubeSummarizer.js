@@ -30,34 +30,36 @@ function downloadSubtitles(url) {
   });
 }
 
-async function runYouTubeSummaryWithProgress(url, progressCallback) {
-  url = normalizeURL(url);
-  progressCallback?.("📥 Downloading subtitles…");
-  const vttPath = await downloadSubtitles(url);
+async function runYouTubeSummaryWithProgress(url, progressCallback, userPrompt) {
+  progressCallback("📥 Fetching transcript...");
 
-  progressCallback?.("📄 Extracting text from subtitles…");
-  const rawText = extractVTTText(vttPath);
+  try {
+    // Normalize YouTube URL
+    const normalizedURL = normalizeURL(url);
 
-  const chunkSize = 2000;
-  const chunks = [];
-  for (let i = 0; i < rawText.length; i += chunkSize) {
-    chunks.push(rawText.slice(i, i + chunkSize));
+    // Download and extract subtitles
+    const vttPath = await downloadSubtitles(normalizedURL);
+    const transcript = extractVTTText(vttPath);
+
+    if (!transcript || transcript.trim().length < 50) {
+      throw new Error("Transcript is too short or missing.");
+    }
+
+    progressCallback("🧠 Generating response...");
+    const prompt = `${userPrompt}\n\nHere’s the video transcript:\n${transcript}`;
+
+    // askAI is your LLM call (already imported)
+    const summary = await askAI(prompt);
+
+    progressCallback("✅ Done!");
+    return summary;
+
+  } catch (err) {
+    console.error("Error in runYouTubeSummaryWithProgress:", err);
+    throw err;
   }
-
-  const chunkSummaries = [];
-  for (let i = 0; i < chunks.length; i++) {
-    progressCallback?.(`📝 Summarizing chunk ${i + 1} of ${chunks.length}…`);
-    const summary = await askAI(`Summarize this snippet clearly:\n\n${chunks[i]}`);
-    chunkSummaries.push(summary);
-  }
-
-  progressCallback?.("🔗 Combining chunk summaries…");
-  const fullSummary = await askAI(`Combine into a clear summary:\n\n${chunkSummaries.join("\n\n")}`);
-  const shortSummary = await askAI(`Make a punchy one-line summary:\n\n${fullSummary}`);
-
-  fs.writeFileSync("youtube_summary.txt", fullSummary, "utf8");
-
-  return { full: fullSummary, short: shortSummary };
 }
+
+
 
 module.exports = { runYouTubeSummaryWithProgress, normalizeURL };

@@ -93,7 +93,7 @@ html, body {
   <div id="drawer"></div>
 
 <script>
-  const { ipcRenderer } = require('electron');
+ const { ipcRenderer } = require('electron');
 
 const trigger = document.getElementById('trigger');
 const drawer = document.getElementById('drawer');
@@ -103,35 +103,48 @@ const actions = [
   { name: 'Patch Content', action: 'contentPatch' },
   { name: 'Chatbot', action: 'chatbot', toggle: true },
   { name: 'Terminal', action: 'terminal', toggle: true },
-  { name: 'Screen Capture', action: 'screenCapture' },
-  { name: 'YouTube Summary', action: 'ytSummary' }
+  { name: 'Screen Capture (Coming Soon...)', action: 'screenCapture' },
+  { name: 'YouTube Summary(Under Development....)', action: 'ytSummary' },
+  { name: 'Automate Tasks', action: 'Automate' },
+  { name: 'NEURALIS', action: 'neuralis' }
 ];
 
-const toggleStates = {};
+const toggleStates = {}; // will be synced with main process
 
-function buildDrawer() {
+async function buildDrawer() {
+  // fetch persistent states from main
+  const savedStates = await ipcRenderer.invoke('get-menu-options');
+  
   drawer.innerHTML = '';
   actions.forEach(act => {
     const item = document.createElement('div');
     item.classList.add('drawer-item');
     item.textContent = act.name;
-    toggleStates[act.action] = false;
+
+    // initialize toggle state from main process
+    if (act.toggle) {
+      toggleStates[act.action] = savedStates[act.action] ?? false;
+      item.classList.toggle('toggle-on', toggleStates[act.action]);
+      item.classList.toggle('toggle-off', !toggleStates[act.action]);
+    }
 
     item.addEventListener('click', () => {
       if (act.toggle) {
         toggleStates[act.action] = !toggleStates[act.action];
         item.classList.toggle('toggle-on', toggleStates[act.action]);
         item.classList.toggle('toggle-off', !toggleStates[act.action]);
+        ipcRenderer.send('set-menu-option', act.action, toggleStates[act.action]); // persist
       }
       ipcRenderer.send('menu-action', act.action);
     });
 
-    if (act.toggle) item.classList.add('toggle-off');
+    if (act.toggle && !toggleStates[act.action]) item.classList.add('toggle-off');
     drawer.appendChild(item);
   });
 }
 
 buildDrawer();
+
 
 function showDrawer() {
   drawer.style.display = 'flex';

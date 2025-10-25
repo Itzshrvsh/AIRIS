@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  askAI: (input) => ipcRenderer.invoke("ask-ai2", input),
+  askAI: (input) => ipcRenderer.invoke("ask-ai", input),
   focusInput: (callback) => ipcRenderer.on("focus-input", callback),
+});
+
+contextBridge.exposeInMainWorld('AIRIS', {
+  invokeInput: () => ipcRenderer.invoke('show-automate-input'),
+  sendInstruction: (instr) => ipcRenderer.send('send-to-python', instr),
+  onPythonResponse: (callback) => ipcRenderer.on('python-response', (e, msg) => callback(msg))
 });
