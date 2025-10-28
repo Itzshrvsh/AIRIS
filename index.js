@@ -18,6 +18,8 @@ const stringSimilarity = require("string-similarity"); // npm i string-similarit
 const ws = require("windows-shortcuts");
 const axios = require('axios');
 const clipboardy = require('clipboardy');
+
+const OLLAMA_URL = "http://localhost:11434/api/generate";
 // ─── Local imports ──────────────────────────────────────────────
 const { askAI } = require("./js-files/aiRequest");
 const { analyzeScreen , setMainWindow } = require('./js-files/screenObserver');
@@ -192,16 +194,21 @@ function createMainWindow() {
 }
 
 function createTerminalWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   terminalWin = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 700,
+    height: height,
+    x: width - 700,
+    y: 0,
     frame: false,
-    backgroundColor: "#000",
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       preload: path.join(__dirname, "./js-files/proload.js"),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
+      nodeIntegration: true,
+      contextIsolation: false,
+    }
   });
 
   terminalWin.loadFile("termi.html");
@@ -214,21 +221,22 @@ function createTerminalWindow() {
 
 function openAIInputWindow() {
   if (inputWindow) return inputWindow.focus();
-  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   inputWindow = new BrowserWindow({
-    width: 600,
-    height: 400,
-    x: (width - 600) / 2,
-    y: 100,
+    width: 700,
+    height: height,
+    x: width - 700,
+    y: 0,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true,
+    resizable: false,
     webPreferences: {
+      preload: path.join(__dirname, "./js-files/proload.js"),
       nodeIntegration: true,
       contextIsolation: false,
-    },
+    }
   });
 
   inputWindow.loadFile("ai_input.html");
@@ -312,7 +320,7 @@ function showMessageWindow(msg, options = {}) {
     messageWindow.webContents.send('display-message', msg);
 
     if (autoClose) {
-      setTimeout(() => messageWindow.close(), 5000);
+      setTimeout(() => messageWindow.close(), 8000);
     }
   });
 
@@ -323,46 +331,79 @@ function showMessageWindow(msg, options = {}) {
 // ─── functions ───────────────────────────────────────────────────────
 
 
-function openNEURALIS(msg, updateExisting = true) {
-
-  // Reuse existing window if needed
-  if (neuraliswindow && !neuraliswindow.isDestroyed() && updateExisting) {
-    if(msg) neuraliswindow.webContents.send('display-message', msg);
-    return;
-  }
-
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const windowWidth = 600;
-  const windowHeight = height;
-
-  neuraliswindow = new BrowserWindow({
-    width: windowWidth,
-    height: windowHeight,
-    frame: true,
-    transparent: false,
-    alwaysOnTop: true,
-    resizable: false,          // optional
-    minimizable: true,
-    maximizable: false,
-    webPreferences: {
-      preload: path.join(__dirname, "./js-files/proload.js"), // fixed typo
-      nodeIntegration: true,
-      contextIsolation: false,
+async function openNEURALIS(msg = null, updateExisting = true) {
+  try {
+    // 1️⃣ If an existing window is open and valid, reuse it
+    if (neuraliswindow && !neuraliswindow.isDestroyed()) {
+      if (updateExisting) {
+        neuraliswindow.show(); // ensure visible
+        if (msg) neuraliswindow.webContents.send('display-message', msg);
+      }
+      return;
     }
-  });
 
-  neuraliswindow.loadFile("neuralis.html");
+    // 2️⃣ Get display size (can later be adapted for multi-monitor)
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  neuraliswindow.on("closed", () => neuraliswindow = null);
-
-  if(msg) {
-    neuraliswindow.webContents.once('did-finish-load', () => {
-      neuraliswindow.webContents.send('display-message', msg);
+    // 3️⃣ Create new BrowserWindow
+    neuraliswindow = new BrowserWindow({
+      width: 420,
+      height: height,
+      x: width - 420, // start from right edge
+      y: 0,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      resizable: false,
+      webPreferences: {
+        preload: path.join(__dirname, "./js-files/proload.js"),
+        nodeIntegration: true,
+        contextIsolation: false,
+      }
     });
+
+    // 4️⃣ Load interface file
+    neuraliswindow.loadFile("neuralis.html");
+
+    // 5️⃣ When loaded, send message if provided
+    neuraliswindow.webContents.once('did-finish-load', () => {
+      if (msg) neuraliswindow.webContents.send('display-message', msg);
+      // smooth fade-in (optional)
+      fadeInWindow(neuraliswindow);
+    });
+
+    // 6️⃣ Handle unexpected closure
+    neuraliswindow.on("closed", () => {
+      neuraliswindow = null;
+    });
+
+    // Optional: Safety net if the page crashes
+    neuraliswindow.webContents.on('crashed', () => {
+      console.error("⚠️ Neuralis window crashed — restarting...");
+      neuraliswindow = null;
+      setTimeout(() => openNEURALIS(msg, false), 500);
+    });
+
+  } catch (err) {
+    console.error("Error in openNEURALIS:", err);
   }
 }
 
 
+// ✨ Optional helper for smooth appearance
+function fadeInWindow(win, duration = 200) {
+  let opacity = 0.0;
+  win.setOpacity(opacity);
+  win.show();
+  const interval = setInterval(() => {
+    opacity += 0.05;
+    if (opacity >= 1) {
+      opacity = 1;
+      clearInterval(interval);
+    }
+    win.setOpacity(opacity);
+  }, duration / 20);
+}
 
 // Existing function that shows your message overlay window
 // function showMessageWindow(msg) {
@@ -616,6 +657,69 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
   } catch (err) {
     console.error("AIRIS AI error:", err);
     return "AIRIS encountered an error.";
+  }
+});
+
+// 🧠 1️⃣ Intent classifier
+ipcMain.handle('llava-evaluate', async (event, text) => {
+  try {
+    const prompt = `
+You are AIRIS, an intent classifier.
+Analyze the user's input and output ONLY a valid JSON object describing intent.
+Possible intents: ["send_email", "open_app", "general_chat", "file_action", "unknown"].
+Do not include any explanation or text besides JSON.
+
+Examples:
+User: "Send an email to Raj about the project update"
+Output: {"intent":"send_email"}
+
+User: "Open Chrome"
+Output: {"intent":"open_app"}
+
+User: "Explain quantum computing"
+Output: {"intent":"general_chat"}
+
+Now classify:
+User: "${text}"
+`.trim();
+
+    const res = await axios.post(OLLAMA_URL, {
+      model: "llava",
+      prompt,
+      stream: false
+    });
+
+    let rawResponse = res.data?.response?.trim() || '{"intent":"unknown"}';
+
+    // sanitize
+    if (!rawResponse.startsWith("{")) {
+      rawResponse = '{"intent":"unknown"}';
+    }
+
+    return rawResponse;
+
+  } catch (err) {
+    console.error("AIRIS LLaVA intent classification error:", err.message);
+    return '{"intent":"unknown"}';
+  }
+});
+
+
+// 💬 2️⃣ General chat responder
+ipcMain.handle('llava-chat', async (event, text) => {
+  try {
+    const res = await axios.post(OLLAMA_URL, {
+      model: "llava",
+      prompt: text,
+      stream: false
+    });
+
+    const responseText = res.data?.response?.trim() || "AIRIS had no reply.";
+    return responseText;
+
+  } catch (err) {
+    console.error("AIRIS LLaVA chat error:", err.message);
+    return "Error contacting AIRIS chat module.";
   }
 });
 // MAIN PROCESS (in Electron)

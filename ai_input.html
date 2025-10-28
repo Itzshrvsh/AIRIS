@@ -9,115 +9,77 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
       background: transparent;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
-      color: white;
-      user-select: none;
     }
 
-    /* === Floating Glass Panel === */
-    .window {
-      width: 640px;
-      min-height: 320px;
-      background: rgba(15, 23, 42, 0.65);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      box-shadow: 0 0 60px rgba(0, 255, 255, 0.15),
-                  0 0 100px rgba(255, 0, 255, 0.1);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      padding: 30px;
+    /* === Slide-in panel === */
+    .panel {
+      position: fixed;
+      top: 0;
+      right: -420px; /* hidden initially */
+      width: 420px;
+      height: 100%;
+      background: rgba(20, 20, 20, 0.85);
+      backdrop-filter: blur(12px);
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
+      gap: 12px;
+      transition: right 0.45s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .window:hover {
-      box-shadow: 0 0 90px rgba(0, 255, 255, 0.25),
-                  0 0 140px rgba(255, 0, 255, 0.15);
-    }
-
-    #title {
-      font-size: 26px;
-      margin-bottom: 20px;
-      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-size: 400%;
-      animation: flow 6s linear infinite;
-      font-weight: 600;
-      text-align: center;
-      letter-spacing: 1px;
-    }
-
-    @keyframes flow {
-      from { background-position: 0%; }
-      to { background-position: 400%; }
+    .panel.active {
+      right: 0; /* slide in */
     }
 
     #inputBox {
-      width: 100%;
-      min-height: 100px;
-      max-height: 200px;
-      padding: 14px 18px;
-      font-size: 17px;
-      line-height: 1.4;
+      width: 80%;
+      height: 100px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      background: rgba(40, 40, 40, 0.9);
       color: #fff;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
+      border: none;
       resize: none;
       outline: none;
-      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
-      transition: all 0.2s ease;
-      backdrop-filter: blur(8px);
+      box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
     }
 
     #inputBox:focus {
-      border-color: #00e0ff;
-      box-shadow: 0 0 12px rgba(0, 224, 255, 0.5);
+      box-shadow: 0 0 10px rgba(0, 160, 255, 0.6);
+      border: 1px solid #0af;
     }
 
     #askButton {
-      margin-top: 20px;
-      padding: 12px 40px;
-      font-size: 16px;
-      font-weight: 600;
+      padding: 10px 20px;
       border: none;
-      border-radius: 30px;
-      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
-      background-size: 400%;
+      border-radius: 8px;
+      background: #0af;
       color: #000;
+      font-weight: bold;
       cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      animation: pulse 4s linear infinite;
-    }
-
-    @keyframes pulse {
-      0% { background-position: 0%; }
-      100% { background-position: 400%; }
+      transition: background 0.2s, transform 0.15s;
     }
 
     #askButton:hover {
+      background: #09f;
       transform: scale(1.05);
-      box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
     }
 
     #loader {
       display: none;
-      width: 180px;
-      height: 8px;
-      margin-top: 24px;
+      width: 80%;
+      height: 6px;
       border-radius: 100px;
       background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
       background-size: 400%;
-      animation: loader 2.2s linear infinite;
+      animation: loader 2s linear infinite;
     }
 
     @keyframes loader {
@@ -127,55 +89,51 @@
   </style>
 </head>
 <body>
-  <div class="window">
-    <div id="title">🧠 AIRIS Command Interface</div>
-    <textarea id="inputBox" placeholder="Type your query or command..."></textarea>
-    <button id="askButton">🚀 Engage</button>
+  <div class="panel" id="panel">
+    <textarea id="inputBox" placeholder="Type your command..."></textarea>
+    <button id="askButton">🚀 Ask AIRIS</button>
     <div id="loader"></div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
+    const panel = document.getElementById('panel');
     const inputBox = document.getElementById('inputBox');
-    const loader = document.getElementById('loader');
     const askButton = document.getElementById('askButton');
+    const loader = document.getElementById('loader');
 
-    askButton.addEventListener('click', askAI);
+    // Slide in on load
+    setTimeout(() => panel.classList.add('active'), 80);
+
+    askButton.addEventListener('click', handleSend);
     inputBox.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        askAI();
+        handleSend();
       }
     });
 
-    async function askAI() {
-      const inputText = inputBox.value.trim();
-      if (!inputText) return;
+    async function handleSend() {
+      const text = inputBox.value.trim();
+      if (!text) return;
 
-      inputBox.disabled = true;
       askButton.disabled = true;
+      inputBox.disabled = true;
       loader.style.display = 'block';
 
-      const systemInstructions = `
-You are AIRIS — an elite, high-performance assistant.
-Be concise, technical, and contextual with memory continuity.
-Never use filler like "Here's your answer".
-User: ${inputText}
-      `.trim();
-
       try {
-        const response = await ipcRenderer.invoke('ask-ai', systemInstructions);
-        ipcRenderer.send('memory-log', inputText);
+        const response = await ipcRenderer.invoke('ask-ai', text);
         ipcRenderer.send('show-sentiment-message', response);
-        ipcRenderer.send('show-glow-window');
-        console.log("✅ Response:", response);
+
+        // Slide out and close
+        panel.classList.remove('active');
+        setTimeout(() => window.close(), 400);
+
       } catch (err) {
-        console.error("🔥 AI error:", err);
-        alert("AIRIS crashed. Probably your fault. Try again.");
+        console.error('AIRIS Error:', err);
+        alert('AIRIS malfunction. Try again.');
       } finally {
         loader.style.display = 'none';
-        inputBox.disabled = false;
-        askButton.disabled = false;
         inputBox.value = '';
       }
     }
