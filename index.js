@@ -11,6 +11,7 @@ const { spawn, exec , execSync } = require("child_process");
 const util = require("util");
 const robot = require("robotjs");
 const {summarizeYouTubeVideo} = require("./modules/transcriber");
+const { execFile } = require("child_process");
 
 const activeWindow = require("active-win");
 let storedText = '';
@@ -561,25 +562,47 @@ function typeSafe(text) {
 }
 
 
+// =====================================================
+// PATH RESOLVER (WORKS IN DEV + PACKAGED .EXE)
+// =====================================================
+function getPythonScript(scriptName) {
+  const basePath = app.isPackaged
+    ? path.join(process.resourcesPath, "res", "python")
+    : path.join(process.cwd(), "res", "python");
+  const scriptPath = path.join(basePath, scriptName);
+  console.log("[PYTHON PATH] →", scriptPath);
+  return scriptPath;
+}
+
+// =====================================================
+// PYTHON EXEC HELPERS
+// =====================================================
 async function getCoords(scriptName) {
   return new Promise((resolve, reject) => {
-    exec(`python ${scriptName}`, (err, stdout) => {
+    const scriptPath = getPythonScript(scriptName);
+    execFile("python", [scriptPath], (err, stdout) => {
       if (err) return reject(err);
-      const [x, y] = stdout.trim().split(',').map(Number);
+      const [x, y] = stdout.trim().split(",").map(Number);
       resolve({ x, y });
     });
   });
 }
+
 async function getCaretCoords() {
   return new Promise((resolve, reject) => {
-    exec('python get_caret_coords.py', (err, stdout) => {
+    const scriptPath = getPythonScript("get_caret_coords.py");
+    execFile("python", [scriptPath], (err, stdout) => {
       if (err) return reject(err);
-      const [x, y] = stdout.trim().split(',').map(Number);
+      const [x, y] = stdout.trim().split(",").map(Number);
       resolve({ x, y });
     });
   });
 }
-ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
+
+// =====================================================
+// MAIN NEURALIS AI HANDLER
+// =====================================================
+ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
   try {
     // 1️⃣ Ask LLaMA for app name
     const prompt = `
@@ -587,155 +610,125 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
     The user provides a command like "open Chrome" or "launch VS Code".
     
     INSTRUCTIONS:
-    - Respond with ONLY the **exact official app name** as it appears in the system (e.g.,"opera", "Google Chrome", "Visual Studio Code", "Spotify").
+    - Respond with ONLY the exact official app name as it appears in the system (e.g.,"opera", "Google Chrome", "Visual Studio Code", "Spotify").
     - DO NOT include numbers, bullet points, extra words, explanations, or punctuation.
-    - Return **one app only**. 
-    - If you are unsure, respond with "UNKNOWN_APP".
-    
+    - Return one app only.
+    - If unsure, respond with UNKNOWN_APP.
+
     User command: "${userInput}"
     `.trim();
 
     const res = await axios.post("http://localhost:11434/api/generate", {
       model: "llava",
       prompt,
-      stream: false
+      stream: false,
     });
 
     const aiResponse = res.data?.response?.trim() || "UNKNOWN_APP";
-
     if (aiResponse === "UNKNOWN_APP") return "Could not determine app to launch.";
 
-    // 2️⃣ Launch app
     exec(`start "" "${aiResponse}"`);
-    console.log(`Launched: ${aiResponse}`);
-    await new Promise(r => setTimeout(r, 2000)); // wait for app to open
+    console.log(`🚀 Launched: ${aiResponse}`);
+    await new Promise((r) => setTimeout(r, 2000)); // Wait for app to open
 
-    // 3️⃣ Special Gmail automation
-    if (userInput.toLowerCase().includes('gmail')||userInput.toLowerCase().includes('email')||userInput.toLowerCase().includes('mail')) {
+    // 2️⃣ If email-related
+    if (
+      userInput.toLowerCase().includes("gmail") ||
+      userInput.toLowerCase().includes("email") ||
+      userInput.toLowerCase().includes("mail")
+    ) {
+      robot.keyTap("t", "control");
+      await new Promise((r) => setTimeout(r, 2000));
+      robot.typeString("gmail.com");
+      robot.keyTap("enter");
+      await new Promise((r) => setTimeout(r, 5000));
 
-      // Focus browser and new tab
-      robot.keyTap('t', 'control');
-      await new Promise(r => setTimeout(r, 2000));
-      robot.typeString('gmail.com');
-      robot.keyTap('enter');
-      await new Promise(r => setTimeout(r, 5000)); // wait for Gmail to load
-
-      // 4️⃣ Get Compose button coordinates (using Python for initial)
-      const composeCoords = await getCoords('get_compose_coords.py');
+      // 🧭 Get Compose Button
+      const composeCoords = await getCoords("get_compose_coords.py");
       robot.moveMouse(composeCoords.x, composeCoords.y);
       robot.mouseClick();
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
 
-      // 5️⃣ Type recipient
-      // 1️⃣ Ask LLaMA to extract only the email address from the input
+      // 3️⃣ Extract recipient email
       const emailPrompt = `
-      You are AIRIS. From the following text, extract ONLY the recipient's email address.
-      User input: "${userInput}"
-      Respond with the email address only, no extra words, punctuation, or explanation.
-      If you can't find a valid email, respond with UNKNOWN_EMAIL.
+      Extract only the recipient's email address from this text:
+      "${userInput}"
+      Respond with the email only — no extra text.
       `.trim();
+
 
       const emailRes = await axios.post("http://localhost:11434/api/generate", {
         model: "llava",
         prompt: emailPrompt,
-        stream: false
+        stream: false,
       });
 
       const recipientEmail = emailRes.data?.response?.trim() || "UNKNOWN_EMAIL";
-
-      if (recipientEmail === "UNKNOWN_EMAIL") {
-        console.warn("AIRIS could not determine recipient email.");
-      } else {
-        // 2️⃣ Type email using RobotJS
-        robot.typeString(recipientEmail);
-        robot.keyTap('enter');
-        await new Promise(r => setTimeout(r, 300));
-      }
-
-      const caretCoords = await getCaretCoords(); // your Python script returns current caret x,y
-      // 6️⃣ Type subject (few pixels below Compose)
-      const subjectPrompt = `
-      You are AIRIS, a precise AI assistant for email automation.
-      From the following user input, generate a concise **subject line** for the email they want to send.
-      - Do NOT include the recipient email, greetings, or extra explanations.
-      - Make it short, clear, and professional.
-      - Respond with only the subject line.
-      - If the input does not contain any clear message, respond with "UNKNOWN_SUBJECT".
-
-      User input: "${userInput}"
-      `.trim();
-
-
-      // 2️⃣ Send prompt to LLaMA
-      const subjectRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llava",
-        prompt: subjectPrompt,
-        stream: false
-      });
-      
-      const emailSubject = subjectRes.data?.response?.trim() || "UNKNOWN_SUBJECT";
-      let composeCoordsub;
-      if (emailSubject === "UNKNOWN_SUBJECT") {
-        alert("AIRIS could not determine email subject.");
-      } else {
-        composeCoordsub = await getCoords('python','get_subject_coords.py');
-        robot.moveMouse(composeCoordsub.x, composeCoordsub.y);
-        robot.mouseClick();
-        robot.typeString(emailSubject);
-        await new Promise(r => setTimeout(r, 300));
-        
-      }
-      
-
-      // 7️⃣ Type body (a bit further below)
-      
-      const bodyPrompt = `
-      You are AIRIS, a precise AI assistant for email automation.
-      From the following user input, generate the **body/content** of the email they want to send.
-      - Do NOT include the recipient email or subject line.
-      - Keep it concise, clear, and professional.
-      - Respond only with the email content.
-      - If the input does not contain a clear message to send, respond with "UNKNOWN_BODY".
-      - Always use there recipient's name after the best regard dont use [your name] at anycost find a name in the context itself.
-      - Keep it relevant to the user's intent.
-      - be profressional and polite.
-
-      User input: "${userInput}"
-      `.trim();
-      
-      // 2️⃣ Send prompt to LLaMA
-      const bodyRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llava",
-        prompt: bodyPrompt,
-        stream: false
-      });
-      
-      const emailbody = bodyRes.data?.response?.trim() || "UNKNOWN_body";
-      
-      if (emailbody === "UNKNOWN_body") {
-        alert("AIRIS could not determine body.");
-      } else {
-        // move to subject/body field
-        robot.moveMouse(composeCoordsub.x, composeCoordsub.y);
-        robot.mouseClick();
-        await new Promise(r => setTimeout(r, 100)); // ensure field is focused
-      
-        // copy body to clipboard using Electron clipboard
-        clipboard.writeText(emailbody);
-      
-        // paste with RobotJS
+      if (recipientEmail !== "UNKNOWN_EMAIL") {
+        clipboard.writeText(recipientEmail);
         robot.keyTap('v', 'control');
-        await new Promise(r => setTimeout(r, 300));
+        robot.keyTap("enter");
+        await new Promise((r) => setTimeout(r, 300));
       }
-      
-      // 8️⃣ Click Send button using Python script for coordinates
-      const sendCoords = await getCoords('python','get_send_coords.py');
-      robot.moveMouse(sendCoords.x, sendCoords.y);
-      robot.mouseClick();
+
+      // 4️⃣ Generate subject
+const subjectPrompt = `
+You are AIRIS, a precise AI assistant for email automation.
+Generate a concise subject line for the email.
+Input: "${userInput}"
+`.trim();
+
+const subjectRes = await axios.post("http://localhost:11434/api/generate", {
+  model: "llava",
+  prompt: subjectPrompt,
+  stream: false,
+});
+
+let subjectCoords;
+const emailSubject = subjectRes.data?.response?.trim() || "UNKNOWN_SUBJECT";
+
+if (emailSubject !== "UNKNOWN_SUBJECT") {
+  subjectCoords = await getCoords("get_subject_coords.py");
+  robot.moveMouse(subjectCoords.x, subjectCoords.y);
+  robot.mouseClick(); // focus subject field
+  clipboard.writeText(emailSubject);
+  robot.keyTap('v', 'control');
+  await new Promise(r => setTimeout(r, 200));
+
+  // ✅ Move slightly below to switch to body field
+  robot.moveMouseSmooth(subjectCoords.x, subjectCoords.y + 60); // ~60px below subject box
+  robot.mouseClick(); // focus body area
+  await new Promise(r => setTimeout(r, 200));
+}
+
+// 5️⃣ Generate body
+const bodyPrompt = `
+You are AIRIS, a precise AI assistant for email automation.
+From this user input, write the email body clearly and professionally.
+Input: "${userInput}"
+`.trim();
+
+const bodyRes = await axios.post("http://localhost:11434/api/generate", {
+  model: "llava",
+  prompt: bodyPrompt,
+  stream: false,
+});
+
+const emailBody = bodyRes.data?.response?.trim() || "UNKNOWN_BODY";
+if (emailBody !== "UNKNOWN_BODY") {
+  clipboard.writeText(emailBody);
+  robot.keyTap("v", "control");
+  await new Promise(r => setTimeout(r, 300));
+}
+
+// 6️⃣ Send email
+const sendCoords = await getCoords("get_send_coords.py");
+robot.moveMouse(sendCoords.x, sendCoords.y);
+robot.mouseClick();
+
     }
 
     return `AIRIS launched: ${aiResponse}`;
-
   } catch (err) {
     console.error("AIRIS AI error:", err);
     return "AIRIS encountered an error.";
@@ -1460,42 +1453,78 @@ app.whenReady().then(async () => {
           }, 2000);
           break;
     
-        case 'contentPatch':
-          try {
-            // 1️⃣ Cut the highlighted code (Ctrl+X)
-            robot.keyTap("x", "control");
+          case 'contentPatch':
+            try {
+              // 1️⃣ Cut the highlighted code (Ctrl+X)
+              robot.keyTap("x", "control");
           
-            // 2️⃣ Wait a moment for clipboard to update
-            await new Promise(res => setTimeout(res, 200));
+              // 2️⃣ Wait a moment for clipboard to update
+              await new Promise(res => setTimeout(res, 200));
           
-            const highlightedCode = clipboard.readText().trim();
-            if (!highlightedCode) {
-              showMessageWindow("⚠️ No code detected! Highlight some code first.");
-              return;
+              const highlightedCode = clipboard.readText().trim();
+              if (!highlightedCode) {
+                showMessageWindow("⚠️ No code detected! Highlight some code first.");
+                return;
+              }
+          
+              showMessageWindow("🔍 Analyzing code for possible errors...");
+          
+              // 3️⃣ Ask AI for a short diagnostic
+              const diagnosticPrompt = `
+              You are AIRIS — an expert code reviewer.
+              In under 5 concise lines, describe the main issue(s) in this code snippet.
+              Keep it brief and technical, no explanations or solutions.
+              Code:
+              ${highlightedCode}
+              `.trim();
+          
+              const diagRes = await axios.post("http://localhost:11434/api/generate", {
+                model: "llava",
+                prompt: diagnosticPrompt,
+                stream: false,
+              });
+          
+              const shortDiagnosis = diagRes.data?.response?.trim() || "No obvious issues found.";
+          
+              showMessageWindow("⚠️ Code Issue Summary:\n" + shortDiagnosis);
+          
+              // 4️⃣ Generate fixed version
+              const patchPrompt = `
+              You are AIRIS — a senior developer AI.
+              Fix and clean the following code:
+              - Correct all syntax and logic errors
+              - Keep it readable and efficient
+              - Return only the corrected code, no explanation
+              Code:
+              ${highlightedCode}
+              `.trim();
+          
+              const patchRes = await axios.post("http://localhost:11434/api/generate", {
+                model: "llava",
+                prompt: patchPrompt,
+                stream: false,
+              });
+          
+              const patchedCode = patchRes.data?.response?.trim();
+              if (!patchedCode) {
+                showMessageWindow("⚠️ Could not generate a valid patch. The snippet may be incomplete.");
+                return;
+              }
+          
+              // 5️⃣ Paste patched code
+              clipboard.writeText(patchedCode);
+              robot.keyTap("v", "control");
+          
+              showMessageWindow("✅ Code patched successfully.\n\n🧩 Summary:\n" + shortDiagnosis);
+          
+            } catch (err) {
+              console.error("Error patching code:", err);
+              showMessageWindow(`❌ Patch failed: ${err.message}`);
             }
+            break;
           
-            showMessageWindow("💬 Sending code to AI to generate patch...");
+
           
-            // 3️⃣ Send code to AI for patching
-            const patchedCode = await generateCodePatch(highlightedCode);
-          
-            if (!patchedCode) {
-              showMessageWindow("⚠️ AI did not return valid code.");
-              return;
-            }
-          
-            // 4️⃣ Paste the patched code at the same selection (no mouse click!)
-            clipboard.writeText(patchedCode);
-            robot.keyTap("v", "control");
-          
-            showMessageWindow("✅ Code patched successfully!");
-          
-          } catch (err) {
-            console.error("Error patching code:", err);
-            showMessageWindow("❌ Something went wrong while patching code.");
-          }
-          
-          break;
 
           case "Automate": {
             const { spawn } = require("child_process");

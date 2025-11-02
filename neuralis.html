@@ -137,9 +137,14 @@
   
     // Close button
     closeButton.addEventListener("click", () => {
+      hidePanel();
+    });
+
+    // Helper: smoothly hide and close panel
+    function hidePanel() {
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
-    });
+    }
   
     // Helper: detect whether it's an automation command or AI query
     function isAutomationCommand(text) {
@@ -149,56 +154,57 @@
       return automationKeywords.some(word => text.toLowerCase().includes(word));
     }
   
-    // Ask AIRIS / Run Automation
     askButton.addEventListener("click", async () => {
       const text = inputBox.value.trim();
       if (!text) return alert("Type or say something first!");
-  
+
       try {
-        if (isAutomationCommand(text)) {
-          // ---- Browser Automation Mode ----
-          statusText.textContent = "⚙️ Running browser automation...";
-          const result = await ipcRenderer.invoke("browser-command", text);
-          statusText.textContent = "✅ Automation done.";
-        } else {
-          // ---- AI Query Mode ----
-          statusText.textContent = "🧠 Thinking...";
-          const aiResponse = await ipcRenderer.invoke("ask-ai", text);
-          ipcRenderer.send('show-sentiment-message', aiResponse);
-          inputBox.scrollTop = inputBox.scrollHeight;
+        statusText.textContent = "🧠 Processing...";
+        
+        const result = await ipcRenderer.invoke("Neuralis-ai", text);
+
+        if (result?.type === "automation") {
+          statusText.textContent = "✅ Browser automation done.";
+        } else if (result?.type === "ai") {
+          ipcRenderer.send("show-sentiment-message", result.response);
           statusText.textContent = "✅ Response received.";
-          
+        } else {
+          statusText.textContent = "⚠️ Unknown response.";
         }
+
+        // 🔻 Automatically close the panel after 1 second
+        setTimeout(() => {
+          hidePanel();
+        }, 1000);
+
       } catch (err) {
         console.error(err);
         statusText.textContent = "❌ Error executing command.";
         inputBox.value += `\n\n⚠️ Error: ${err.message || err}`;
       }
     });
+
   
     // Handle speech updates
-        // Handle speech updates
-        ipcRenderer.on('speech-status', (event, msg) => {
-          if (msg.startsWith('✅ Transcribed:')) {
-            const text = msg.replace('✅ Transcribed:', '').trim();
-            if (text) {
-              inputBox.value += (inputBox.value ? '\n' : '') + text;
-              inputBox.scrollTop = inputBox.scrollHeight;
-            }
-            statusText.textContent = '✅ Transcribed and appended.';
-          } else {
-            statusText.textContent = msg;
-          }
+    ipcRenderer.on('speech-status', (event, msg) => {
+      if (msg.startsWith('✅ Transcribed:')) {
+        const text = msg.replace('✅ Transcribed:', '').trim();
+        if (text) {
+          inputBox.value += (inputBox.value ? '\n' : '') + text;
+          inputBox.scrollTop = inputBox.scrollHeight;
+        }
+        statusText.textContent = '✅ Transcribed and appended.';
+      } else {
+        statusText.textContent = msg;
+      }
 
-          if (msg.includes('Speak now')) {
-            micButton.classList.add('listening');
-          } else {
-            micButton.classList.remove('listening');
-          }
-        });
+      if (msg.includes('Speak now')) {
+        micButton.classList.add('listening');
+      } else {
+        micButton.classList.remove('listening');
+      }
+    });
 
-
-  
     // Enter to send
     inputBox.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -228,6 +234,7 @@
         isRecording = false;
       }
     });
+
   </script>
   
 </body>

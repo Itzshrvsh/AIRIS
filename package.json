@@ -1,6 +1,6 @@
 {
   "name": "airis-ai-assistant",
-  "version": "5.1.0",
+  "version": "5.1.5",
   "description": "AIRIS: A Context-Aware Non-Verbal AI Assistant for Solo Developers",
   "keywords": [],
   "license": "ISC",
@@ -69,6 +69,13 @@
         "AppImage",
         "deb"
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "res/",
+        "to": "res/",
+        "filter": ["**/*"]
+      }
+    ]
   }
 }

@@ -397,3 +397,8 @@ Input: send email to my friend bassunited212@gmail.com and saying that when he c
 ⚠️ Error: Error invoking remote method 'browser-command': reply was never sent
 Summary: "Request to send email asking friend to bring spicy dish when visiting." (Neutral)
 
+Input: if (aiResponse === "UNKNOWN_APP") return "Could not determine app to launch.";
+
+Question: what does it do
+Summary: If `aiResponse` is "UNKNOWN_APP", the code will return a message saying "Could not determine app to launch."
+

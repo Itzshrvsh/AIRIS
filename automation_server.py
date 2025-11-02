@@ -2,6 +2,8 @@ import json
 import time
 import base64
 import requests
+import threading
+from flask import Flask, request, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -10,6 +12,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
 # ==============================
 # CONFIG
 # ==============================
@@ -17,18 +20,20 @@ LLAVA_API = "http://localhost:11434/api/generate"
 MODEL = "llava"
 
 # ==============================
-# SETUP BROWSER
+# SETUP BROWSER (only once)
 # ==============================
 chrome_options = Options()
 chrome_options.add_argument("--start-maximized")
-chrome_options.add_argument("user-data-dir=C:\Users\itzsh\AppData\Local\Google\Chrome\User Data\Default")
+chrome_options.add_argument(r"user-data-dir=C:\Users\itzsh\AppData\Local\Google\Chrome\User Data\Default")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+driver.get("https://www.google.com")
+print("✅ Browser launched and ready.")
 
 
 # ==============================
 # HELPERS
 # ==============================
-def take_screenshot_b64(driver):
+def take_screenshot_b64():
     png = driver.get_screenshot_as_png()
     return base64.b64encode(png).decode("utf-8")
 
@@ -49,20 +54,9 @@ def ask_llava_for_actions(command, screenshot_b64):
 You are a web automation planner. Plan JSON steps to achieve the user's command.
 Allowed action types: goto, click, type.
 Strictly output valid JSON — no extra text.
-if the command is unclear, use the keywords like open , search , i want to , if its a photo or video and select google.com ot youtube.com, if they wanted to compare products use popular mobile phone details sites, etc.
-
-Example:
-{{
-  "actions": [
-    {{"type": "goto", "target": "https://www.youtube.com"}},
-    {{"type": "type", "target": "search", "text": "best laptops"}},
-    {{"type": "click", "target": "search"}}
-  ]
-}}
 
 User command: "{command}"
 """
-
     payload = {"model": MODEL, "prompt": prompt, "images": [screenshot_b64], "stream": False}
     try:
         res = requests.post(LLAVA_API, json=payload, timeout=90)
@@ -75,11 +69,7 @@ User command: "{command}"
         return []
 
 
-# ==============================
-# EXECUTION LOGIC
-# ==============================
 def normalize_action(act):
-    """Map unknown LLaVA actions to known ones."""
     t = act.get("type", "").lower()
     if t in ["open_browser", "open_new_tab"]:
         act["type"] = "goto"
@@ -88,8 +78,7 @@ def normalize_action(act):
     return act
 
 
-def find_clickable_element(driver, target):
-    """Find the best match for a clickable element."""
+def find_clickable_element(target):
     xpaths = [
         f"//*[contains(text(), '{target}')]",
         f"//*[@value='{target}']",
@@ -104,8 +93,7 @@ def find_clickable_element(driver, target):
     return None
 
 
-def find_input_field(driver, target):
-    """Find an input box or search bar."""
+def find_input_field(target):
     xpaths = [
         f"//input[contains(@placeholder, '{target}')]",
         f"//input[contains(@aria-label, '{target}')]",
@@ -119,7 +107,24 @@ def find_input_field(driver, target):
     return None
 
 
-def execute_actions(driver, actions):
+def smart_find_input():
+    candidates = [
+        "//input[@name='q']",
+        "//textarea[@name='q']",
+        "//input[@id='search']",
+        "//input[@name='search_query']",
+        "//input[contains(@placeholder, 'Search')]",
+        "//input[contains(@aria-label, 'Search')]",
+        "//textarea[contains(@placeholder, 'Search')]",
+    ]
+    for xp in candidates:
+        elems = driver.find_elements(By.XPATH, xp)
+        if elems:
+            return elems[0]
+    return None
+
+
+def execute_actions(actions):
     for act in actions:
         act = normalize_action(act)
         a_type = act.get("type")
@@ -136,7 +141,7 @@ def execute_actions(driver, actions):
                 print("✅ Page loaded successfully.")
 
             elif a_type == "type":
-                field = find_input_field(driver, target) or smart_find_input(driver)
+                field = find_input_field(target) or smart_find_input()
                 if field:
                     driver.execute_script("arguments[0].scrollIntoView(true);", field)
                     WebDriverWait(driver, 5).until(EC.element_to_be_clickable(field))
@@ -147,12 +152,10 @@ def execute_actions(driver, actions):
                 else:
                     print("⚠️ No input box found, even with fallback.")
 
-
             elif a_type == "click":
-                elem = find_clickable_element(driver, target)
+                elem = find_clickable_element(target)
                 if elem:
                     driver.execute_script("arguments[0].scrollIntoView(true);", elem)
-                    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, f"//*[contains(text(), '{target}')]")))
                     elem.click()
                     print(f"✅ Clicked on '{target}'.")
                 else:
@@ -166,37 +169,35 @@ def execute_actions(driver, actions):
 
         time.sleep(2)
 
-def smart_find_input(driver):
-    """Try to find a search input automatically if target not found."""
-    candidates = [
-        "//input[@name='q']",  # Google
-        "//textarea[@name='q']",
-        "//input[@id='search']",  # YouTube
-        "//input[@name='search_query']",
-        "//input[contains(@placeholder, 'Search')]",
-        "//input[contains(@aria-label, 'Search')]",
-        "//textarea[contains(@placeholder, 'Search')]",
-    ]
-    for xp in candidates:
-        elems = driver.find_elements(By.XPATH, xp)
-        if elems:
-            return elems[0]
-    return None
+
 # ==============================
-# MAIN LOOP
+# FLASK SERVER
 # ==============================
+app = Flask(__name__)
+
+@app.route("/run", methods=["POST"])
+def run_command():
+    data = request.get_json(force=True)
+    cmd = data.get("cmd", "")
+    if not cmd:
+        return jsonify({"error": "Missing 'cmd'"}), 400
+
+    screenshot_b64 = take_screenshot_b64()
+    actions = ask_llava_for_actions(cmd, screenshot_b64)
+
+    if not actions:
+        return jsonify({"status": "no_actions", "message": "No valid automation actions found."})
+
+    # Run automation in background thread to avoid blocking the API
+    threading.Thread(target=execute_actions, args=(actions,), daemon=True).start()
+
+    return jsonify({"status": "running", "actions": actions})
+
+
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({"status": "ready", "message": "Automation server active."})
+
+
 if __name__ == "__main__":
-    driver.get("https://www.google.com")
-    print("✅ Browser launched.")
-
-    while True:
-        cmd = input("\n🗣 Enter command (or 'exit'): ").strip()
-        if cmd.lower() == "exit":
-            break
-
-        screenshot_b64 = take_screenshot_b64(driver)
-        actions = ask_llava_for_actions(cmd, screenshot_b64)
-        execute_actions(driver, actions)
-
-    driver.quit()
-    print("🛑 Browser closed.")
+    app.run(port=5005)
