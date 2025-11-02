@@ -4,12 +4,17 @@
 
 const { app, ipcMain, globalShortcut, clipboard, screen, shell, BrowserWindow, Tray, Menu, dialog} = require("electron");
 const path = require("path");
+const ytdl = require("@distube/ytdl-core");
+// const { summarizeYouTubeVideo } = require("./modules/ytSummarizer");
 const fs = require("fs");
 const { spawn, exec , execSync } = require("child_process");
 const util = require("util");
 const robot = require("robotjs");
+const {summarizeYouTubeVideo} = require("./modules/transcriber");
+
 const activeWindow = require("active-win");
 let storedText = '';
+let  splashWindow;
 let popupWindow;
 const YouTube = require('youtube-sr').default; // npm install youtube-sr
 const play = require('play-dl');
@@ -18,7 +23,7 @@ const stringSimilarity = require("string-similarity"); // npm i string-similarit
 const ws = require("windows-shortcuts");
 const axios = require('axios');
 const clipboardy = require('clipboardy');
-
+let pyProcess = null;
 const OLLAMA_URL = "http://localhost:11434/api/generate";
 // ─── Local imports ──────────────────────────────────────────────
 const { askAI } = require("./js-files/aiRequest");
@@ -132,23 +137,23 @@ function closeAllWindowsExcept(except = null) {
 }
 
 // ─── Window Creators ───────────────────────────────────────────
-function createMenuWindow() {
-  menuWindow = new BrowserWindow({
-    width: 390,
-    height: 300,
-    resizable: false,
-    fullscreenable: false,
-    frame: true,
-    webPreferences: {
-      preload: path.join(__dirname, "./js-files/proload.js"),
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  });
+// function createMenuWindow() {
+//   menuWindow = new BrowserWindow({
+//     width: 390,
+//     height: 300,
+//     resizable: false,
+//     fullscreenable: false,
+//     frame: true,
+//     webPreferences: {
+//       preload: path.join(__dirname, "./js-files/proload.js"),
+//       nodeIntegration: true,
+//       contextIsolation: false,
+//     },
+//   });
 
-  menuWindow.loadFile("menu.html");
-  menuWindow.on("closed", () => (menuWindow = null));
-}
+//   menuWindow.loadFile("menu.html");
+//   menuWindow.on("closed", () => (menuWindow = null));
+// }
 
 function createMainWindow() {
   closeAllWindowsExcept(null);
@@ -192,7 +197,36 @@ function createMainWindow() {
   tray.setToolTip("My Electron App");
   tray.setContextMenu(contextMenu);
 }
+function createSplash() {
+  splashWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    fullscreenable: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    }, 
+  });
 
+  splashWindow.loadFile("splash.html");
+
+  // Prevent closing
+  splashWindow.on("close", (e) => e.preventDefault());
+
+  // After 4 seconds, close splash and open main window
+  setTimeout(() => {
+    if (splashWindow) {
+      splashWindow.destroy();
+      createMainWindow();
+    }
+  }, 6000);
+}
 function createTerminalWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   terminalWin = new BrowserWindow({
@@ -388,6 +422,54 @@ async function openNEURALIS(msg = null, updateExisting = true) {
     console.error("Error in openNEURALIS:", err);
   }
 }
+function getPythonScript(scriptName) {
+  const basePath = app.isPackaged
+    ? path.join(process.resourcesPath, 'python')
+    : path.join(process.cwd(), 'python');
+  return path.join(basePath, scriptName);
+}
+ipcMain.handle('browser-command', async (event, command) => {
+  return new Promise((resolve, reject) => {
+    const scriptPath = getPythonScript('bridge_runner.py');
+    const py = spawn('Python', [scriptPath, command]);
+    let jsonLine = '';
+
+    py.stdout.on('data', data => {
+      const lines = data.toString().split('\n');
+
+      for (const line of lines) {
+        const clean = line.trim();
+
+        // Print all logs to console for debugging
+        if (clean && !clean.startsWith('{')) {
+          console.log('[PYTHON LOG]', clean);
+        }
+
+        // Capture only the JSON result
+        if (clean.startsWith('{') && clean.endsWith('}')) {
+          jsonLine = clean;
+        }
+      }
+    });
+
+    py.stderr.on('data', err => console.error('[PYTHON ERROR]', err.toString()));
+
+    // py.on('close', () => {
+    //   try {
+    //     if (jsonLine) {
+    //       const parsed = JSON.parse(jsonLine);
+    //       if (parsed.error) reject(parsed.error);
+    //       else resolve(parsed);
+    //     } else {
+    //       resolve('⚠️ No valid JSON output from Python.');
+    //     }
+    //   } catch (err) {
+    //     reject('❌ Failed to parse automation output: ' + err.message);
+    //   }
+    // });
+  });
+});
+
 
 
 // ✨ Optional helper for smooth appearance
@@ -514,7 +596,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
     `.trim();
 
     const res = await axios.post("http://localhost:11434/api/generate", {
-      model: "llama3",
+      model: "llava",
       prompt,
       stream: false
     });
@@ -554,7 +636,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
       `.trim();
 
       const emailRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llama3",
+        model: "llava",
         prompt: emailPrompt,
         stream: false
       });
@@ -586,7 +668,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
 
       // 2️⃣ Send prompt to LLaMA
       const subjectRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llama3",
+        model: "llava",
         prompt: subjectPrompt,
         stream: false
       });
@@ -596,7 +678,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
       if (emailSubject === "UNKNOWN_SUBJECT") {
         alert("AIRIS could not determine email subject.");
       } else {
-        composeCoordsub = await getCoords('get_subject_coords.py');
+        composeCoordsub = await getCoords('python','get_subject_coords.py');
         robot.moveMouse(composeCoordsub.x, composeCoordsub.y);
         robot.mouseClick();
         robot.typeString(emailSubject);
@@ -623,7 +705,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
       
       // 2️⃣ Send prompt to LLaMA
       const bodyRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llama3",
+        model: "llava",
         prompt: bodyPrompt,
         stream: false
       });
@@ -647,7 +729,7 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
       }
       
       // 8️⃣ Click Send button using Python script for coordinates
-      const sendCoords = await getCoords('get_send_coords.py');
+      const sendCoords = await getCoords('python','get_send_coords.py');
       robot.moveMouse(sendCoords.x, sendCoords.y);
       robot.mouseClick();
     }
@@ -657,6 +739,54 @@ ipcMain.handle('Neuralis-ai', async (event, userInput, emailDetails) => {
   } catch (err) {
     console.error("AIRIS AI error:", err);
     return "AIRIS encountered an error.";
+  }
+});
+let finalOutput = '';
+let pendingResolve = null;
+
+ipcMain.handle('toggle-speech', async (event, action) => {
+  if (action === 'start') {
+    if (pyProcess) throw new Error('Already recording');
+
+    finalOutput = '';
+    pyProcess = spawn('python', ['speech.py'], { encoding: 'utf8' });
+
+    // 🔥 Stream incoming lines
+    pyProcess.stdout.on('data', (data) => {
+      const msg = data.toString().trim();
+
+      if (msg === 'STARTED') {
+        event.sender.send('speech-status', '🎙️ Speak now...');
+      } 
+      else if (msg === 'STOPPED') {
+        event.sender.send('speech-status', '🧠 Processing speech...');
+      } 
+      else if (msg) {
+        finalOutput += msg + ' ';
+        event.sender.send('speech-status', '🗣️ ' + msg);
+      }
+    });
+
+    pyProcess.stderr.on('data', err => console.error('Python error:', err.toString()));
+
+    pyProcess.on('close', () => {
+      event.sender.send('speech-status', '✅ Transcribed: ' + finalOutput.trim());
+      if (pendingResolve) {
+        pendingResolve(finalOutput.trim());
+        pendingResolve = null;
+      }
+      pyProcess = null;
+    });
+
+    return 'Listening started...';
+  }
+
+  if (action === 'stop') {
+    if (!pyProcess) return 'Not recording';
+    fs.writeFileSync('stop.txt', '1');
+    return new Promise(resolve => {
+      pendingResolve = resolve; // wait for on('close')
+    });
   }
 });
 
@@ -833,7 +963,59 @@ ipcMain.on('ignore-mouse-events', () => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.setIgnoreMouseEvents(true, { forward: true });
 });
+ipcMain.handle("brain-command", async (event, userInput) => {
+  const lower = userInput.toLowerCase();
 
+  const browserKeywords = [
+    "open", "search", "go to", "visit", "find", "watch",
+    "youtube", "compare", "google", "show me", "look up"
+  ];
+
+  const isBrowserTask = browserKeywords.some(k => lower.includes(k));
+
+  if (isBrowserTask) {
+    // Route to browser automation
+    console.log("🌐 Detected browser-related command:", userInput);
+    return runPythonBridge("python","pyautomation.py", [userInput]);
+  } else {
+    // Route to AI reasoning
+    console.log("🧠 Detected text-based AI query:", userInput);
+    return runAskAI(userInput);
+  }
+});
+
+function runPythonBridge(script, args) {
+  return new Promise((resolve, reject) => {
+    const python = spawn("python", [script, ...args]);
+    let output = "";
+    let errorOutput = "";
+
+    python.stdout.on("data", data => (output += data.toString()));
+    python.stderr.on("data", data => (errorOutput += data.toString()));
+
+    python.on("close", code => {
+      if (code === 0) {
+        resolve({ type: "browser", output });
+      } else {
+        reject({ error: errorOutput || output, code });
+      }
+    });
+  });
+}
+
+async function runAskAI(userInput) {
+  const ollama = "http://localhost:11434/api/generate";
+  const model = "llama3"; // or your chosen model
+
+  const res = await fetch(ollama, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt: userInput, stream: false }),
+  });
+
+  const json = await res.json();
+  return { type: "ai", output: json.response };
+}
 ipcMain.handle("ask-ai", async (_, userInput) => {
   try {
     // === Detect user name if mentioned ===
@@ -1098,66 +1280,26 @@ Highlighted Text: ${highlightedText}
   console.log("[🤖 Full Response]:", fullResponse.slice(0, 100));
   showMessageWindow(fullResponse);
 });
-async function handleYTSummaryLocal() {
+// 🔹 Extract video ID from any valid YouTube link
+function extractVideoId(url) {
   try {
-      const url = clipboard.readText().trim();
-      if (!url || !url.startsWith('http')) {
-          console.log("Γ¥î YouTube summary failed: Invalid URL");
-          showMessageWindow("Experimental - Under Construction");
-          return;
-      }
-
-      console.log("≡ƒº¡ Menu action received: ytSummary");
-      showMessageWindow("Experimental - Under Construction");
-      // Download audio from YouTube
-      const streamInfo = await play.stream(url);
-      const chunks = [];
-      for await (const chunk of streamInfo.stream) {
-          chunks.push(chunk);
-      }
-      const audioBuffer = Buffer.concat(chunks);
-      fs.writeFileSync('yt_audio.webm', audioBuffer);
-
-      // OPTIONAL: transcribe audio using a local tool like Whisper.cpp
-      // Example CLI call: whisper.cpp -m models/ggml-base.bin -f yt_audio.webm -otxt
-      // For simplicity, let's assume it produces 'yt_transcript.txt'
-      console.log("🎵 Audio saved. Transcribe manually or via your local transcription tool.");
-
-      // Read transcript
-      const transcript = fs.readFileSync('yt_transcript.txt', 'utf-8');
-
-      // Chunk text
-      const chunkSize = 2000;
-      const textChunks = [];
-      for (let i = 0; i < transcript.length; i += chunkSize) {
-          textChunks.push(transcript.slice(i, i + chunkSize));
-      }
-
-      // Summarize each chunk using a local LLM
-      let summary = '';
-      for (const chunk of textChunks) {
-          // spawn your LLM binary here; example for LLaMA.cpp or Ollama
-          const llm = spawn('llama', ['-m', 'path_to_model.bin', '-p', `Summarize: ${chunk}`]);
-
-          let chunkSummary = '';
-          for await (const data of llm.stdout) {
-              chunkSummary += data.toString();
-          }
-
-          summary += chunkSummary + "\n";
-      }
-
-      fs.writeFileSync('yt_summary.txt', summary, 'utf-8');
-
-      console.log("📌 Summary saved in yt_summary.txt");
-
-      // Optional: extract most important points
-      console.log("📝 Key points (first 500 chars):\n", summary.slice(0, 500));
-
-  } catch (err) {
-      console.error("Γ¥î YouTube summary failed:", err);
+    const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
   }
 }
+
+// Example usage (uncomment for testing)
+/*
+(async () => {
+  const summary = await summarizeYouTubeVideo("https://www.youtube.com/watch?v=KC4lhHd5DFs");
+  console.log("\n📝 Summary:\n", summary);
+
+  console.log("\n🔁 Cached summary check:");
+  console.log(getLastVideoSummary());
+})();
+*/
 function scanFolderForApps(folder) {
   let apps = [];
   if (!fs.existsSync(folder)) return apps;
@@ -1189,6 +1331,24 @@ function isAppRunning(appName) {
 function delay(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+async function handleYouTubeSummary() {
+  try {
+    const url = clipboard.readText().trim();
+    if (!url || !url.includes("youtu")) {
+      console.log("⚠️ Clipboard does not contain a valid YouTube URL.");
+      return;
+    }
+    console.log("🎬 Summarizing from URL:", url);
+    const summary = await summarizeYouTubeVideo(url);
+    console.log("\n--- SUMMARY OUTPUT ---\n");
+    console.log(summary);
+    console.log("\n----------------------\n");
+  } catch (err) {
+    console.error("❌ Error during YouTube summary:", err.message);
+  }
+}
+
 // ─── Initialization ─────────────────s──────────────────────────────────────
 
 app.whenReady().then(async () => {
@@ -1197,6 +1357,13 @@ app.whenReady().then(async () => {
       { label: 'Show App', click: () => mainWindow.show() },
       { label: 'Quit', click: () => app.quit() }
   ]);
+  createSplash();
+  ipcMain.on("splash-finished", () => {
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
+    createMainWindow();
+  }); 
+  
+  // splashWindow.close();
   tray.setToolTip('My App is running in background');
   tray.setContextMenu(contextMenu);
   console.log("✅ ollama pull llava");
@@ -1450,9 +1617,14 @@ app.whenReady().then(async () => {
           }
           break;
     
-          case 'ytSummary':
-            handleYTSummaryLocal();
-          break;
+          case "ytSummary":
+            (async () => {
+              console.log("🧩 Menu action received: ytSummary");
+              const videoUrl = "https://youtu.be/vV41TkYvQoE?si=N2l99pfYTEaNcUKH"; // or pass dynamically
+              await summarizeYouTubeVideo(videoUrl);
+            })();
+            break;
+
 
         default:
           console.warn('⚠️ Unknown menu action:', action);
@@ -1467,7 +1639,7 @@ app.whenReady().then(async () => {
     app.commandLine.appendSwitch('disable-gpu-compositing');
 
     // Initial UI + app features
-    await createMenuWindow();
+    await createMainWindow();
     startAppWatcher();
   } catch (err) {
     console.error("❌ app.whenReady() failed:", err.message);
@@ -1478,12 +1650,12 @@ app.whenReady().then(async () => {
 
 
 
-// Mac-only reactivation
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createMenuWindow();
-  }
-});
+// // Mac-only reactivation
+// app.on("activate", () => {
+//   if (BrowserWindow.getAllWindows().length === 0) {
+//     createMenuWindow();
+//   }
+// });
 
 // Shutdown on close (except macOS)
 app.on("window-all-closed", () => {
@@ -1494,7 +1666,7 @@ app.on("window-all-closed", () => {
 
 // Handle start-ai trigger to open mainWindow and sync user settings
 ipcMain.on("start-ai", (event, settings) => {
-  createMainWindow();
+  createMainWindow(); 
   userSettings = { ...userSettings, ...settings };
   console.log("✅ User Settings Applied:", userSettings);
  

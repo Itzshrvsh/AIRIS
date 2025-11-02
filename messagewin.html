@@ -14,8 +14,7 @@
       overflow: hidden;
       pointer-events: none;
     }
-
-    /* 🔥 Main box anchored to bottom-right */
+  
     #message-box {
       position: fixed;
       bottom: 20px;
@@ -38,30 +37,26 @@
       z-index: 9999;
       display: flex;
       flex-direction: column;
-      max-height: 500px; /* Limit full height */
-      overflow: hidden;
+      overflow: visible;
     }
-
-    /* When visible */
+  
     #message-box.show {
       opacity: 1;
       pointer-events: auto;
       transform: translateY(0);
     }
-
-    /* When closing */
+  
     #message-box.closing {
       transform: translateY(120%);
       opacity: 0;
     }
-
+  
     #window-controls {
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
-      flex-shrink: 0;
     }
-
+  
     .window-button {
       width: 12px;
       height: 12px;
@@ -71,27 +66,16 @@
     }
     .window-button:nth-child(2) { background-color: #ffbd2e; }
     .window-button:nth-child(3) { background-color: #27c93f; }
-
-    /* 🔥 Text area auto-expands upward, scrolls after limit */
+  
     #message-text {
       font-size: 15px;
       line-height: 1.5;
       margin-top: 10px;
-      overflow-y: auto;
-      transition: max-height 0.2s ease-out;
-      flex-grow: 1;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.3) transparent;
+      overflow: visible;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
-
-    #message-text::-webkit-scrollbar {
-      width: 6px;
-    }
-    #message-text::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 3px;
-    }
-
+  
     #progress-bar {
       height: 4px;
       width: 100%;
@@ -99,16 +83,15 @@
       border-radius: 100px;
       overflow: hidden;
       margin: 16px 0 8px 0;
-      flex-shrink: 0;
     }
-
+  
     #progress-fill {
       height: 100%;
       width: 100%;
       background: #0af;
       animation: shrink 8s linear forwards;
     }
-
+  
     @keyframes shrink {
       from { width: 100%; }
       to { width: 0%; }
@@ -130,46 +113,42 @@
     const { ipcRenderer, clipboard } = require('electron');
     const box = document.getElementById('message-box');
     const textEl = document.getElementById('message-text');
-
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // 🔥 Dynamic height adjuster — keeps bottom fixed
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  
     function adjustHeight() {
-      textEl.style.maxHeight = 'none'; // reset first
-      const fullHeight = box.scrollHeight;
-      const maxAllowed = 500; // same as max-height
-      if (fullHeight > maxAllowed) {
-        box.style.height = maxAllowed + "px";
-        textEl.style.maxHeight = (maxAllowed - 80) + "px"; // leave room for controls
+      // Let it grow naturally up to 80% of screen height
+      box.style.height = "auto";
+      const rect = box.getBoundingClientRect();
+      const maxHeight = window.innerHeight * 0.8;
+      if (rect.height > maxHeight) {
+        box.style.height = maxHeight + "px";
+        box.style.overflowY = "auto"; // only if message overflows full screen
       } else {
-        box.style.height = "auto";
-        textEl.style.maxHeight = "none";
+        box.style.overflowY = "visible";
       }
     }
-
+  
     async function displayMessageFlow(msg) {
       textEl.textContent = msg;
       adjustHeight();
-
+  
       box.classList.add('show');
       box.focus();
-
-      // 🔥 Auto copy to clipboard
+  
       clipboard.writeText(msg);
-
+  
       await sleep(8000);
-
       box.classList.remove('show');
       box.classList.add('closing');
       await sleep(1000);
       window.close();
     }
-
+  
     ipcRenderer.on('display-message', async (_, msg) => {
       await displayMessageFlow(msg);
     });
-
-    document.addEventListener('keydown', (e) => {
+  
+    document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         box.classList.remove('show');
         box.classList.add('closing');

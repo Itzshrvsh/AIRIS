@@ -9,7 +9,7 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      background: transparent; /* transparent window */
+      background: transparent;
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
     }
@@ -17,7 +17,7 @@
     .panel {
       position: fixed;
       top: 0;
-      right: -420px; /* start off-screen */
+      right: -420px;
       width: 420px;
       height: 100%;
       background: rgba(20, 20, 20, 0.85);
@@ -31,9 +31,7 @@
       transition: right 0.4s ease-in-out;
     }
 
-    .panel.active {
-      right: 0; /* slide in */
-    }
+    .panel.active { right: 0; }
 
     #inputBox {
       width: 80%;
@@ -49,49 +47,78 @@
       box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
     }
 
-    #askButton {
+    button {
       padding: 10px 20px;
       border: none;
       border-radius: 8px;
-      background: #0af;
-      color: #000;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
     }
 
-    #askButton:hover {
-      background: #09f;
+    #askButton {
+      background: #0af;
+      color: #000;
     }
+
+    #askButton:hover { background: #09f; }
+
+    #micButton {
+      background: #0f0;
+      color: #000;
+    }
+
+    #micButton:hover { background: #0c0; }
+
     #closeButton {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgba(255, 100, 200, 0.2);
-    color: #ffb6c1;
-    border: 1px solid #ff99cc;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
-    line-height: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease-in-out;
-    box-shadow: 0 0 8px #ff69b4;
-  }
-  #closeButton:hover {
-    background: rgba(255, 100, 200, 0.4);
-    box-shadow: 0 0 12px #ffb6c1, 0 0 20px #ff69b4;
-    transform: scale(1.1);
-  }
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 100, 200, 0.2);
+      color: #ffb6c1;
+      border: 1px solid #ff99cc;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+      line-height: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease-in-out;
+      box-shadow: 0 0 8px #ff69b4;
+    }
+
+    #closeButton:hover {
+      background: rgba(255, 100, 200, 0.4);
+      box-shadow: 0 0 12px #ffb6c1, 0 0 20px #ff69b4;
+      transform: scale(1.1);
+    }
+
+    #statusText {
+      color: #0af;
+      font-size: 14px;
+      text-align: center;
+    }
+    .listening {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
   <div class="panel" id="panel">
     <div id="closeButton">×</div>
     <textarea id="inputBox" placeholder="Type your command..."></textarea>
-    <button id="askButton">🚀 Ask AIRIS</button>
+    <div style="display:flex;gap:8px;">
+      <button id="askButton">🚀 Ask AIRIS</button>
+      <button id="micButton">🎙️ Speak</button>
+    </div>
+    <p id="statusText"></p>
   </div>
 
   <script>
@@ -100,43 +127,108 @@
     const inputBox = document.getElementById('inputBox');
     const askButton = document.getElementById('askButton');
     const closeButton = document.getElementById("closeButton");
-    // Animate in
+    const micButton = document.getElementById('micButton');
+    const statusText = document.getElementById('statusText');
+  
+    let isRecording = false;
+  
+    // Slide panel in
     setTimeout(() => panel.classList.add('active'), 100);
+  
+    // Close button
     closeButton.addEventListener("click", () => {
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
     });
-    async function sendToAIRIS() {
+  
+    // Helper: detect whether it's an automation command or AI query
+    function isAutomationCommand(text) {
+      const automationKeywords = [
+        "open", "search", "click", "scroll", "navigate", "play", "close tab", "type", "download"
+      ];
+      return automationKeywords.some(word => text.toLowerCase().includes(word));
+    }
+  
+    // Ask AIRIS / Run Automation
+    askButton.addEventListener("click", async () => {
       const text = inputBox.value.trim();
-      if (!text) return alert("Type something first!");
-    
-      // Disable button to prevent spamming, but keep input usable
-      askButton.disabled = true;
-    
+      if (!text) return alert("Type or say something first!");
+  
       try {
-        const response = await ipcRenderer.invoke('Neuralis-ai', text);
-        alert("AIRIS says: " + response);
-        // Auto-close the window after 2 seconds
-        setTimeout(() => {
-          window.close();
-        }, 2000);
+        if (isAutomationCommand(text)) {
+          // ---- Browser Automation Mode ----
+          statusText.textContent = "⚙️ Running browser automation...";
+          const result = await ipcRenderer.invoke("browser-command", text);
+          statusText.textContent = "✅ Automation done.";
+        } else {
+          // ---- AI Query Mode ----
+          statusText.textContent = "🧠 Thinking...";
+          const aiResponse = await ipcRenderer.invoke("ask-ai", text);
+          ipcRenderer.send('show-sentiment-message', aiResponse);
+          inputBox.scrollTop = inputBox.scrollHeight;
+          statusText.textContent = "✅ Response received.";
+          
+        }
       } catch (err) {
         console.error(err);
-        alert("Error contacting AIRIS.");
-      } finally {
-        askButton.disabled = false;
-        inputBox.value = '';      // clear after sending
-        inputBox.focus();          // refocus so user can type again
+        statusText.textContent = "❌ Error executing command.";
+        inputBox.value += `\n\n⚠️ Error: ${err.message || err}`;
       }
-    }
-    
-    askButton.addEventListener('click', sendToAIRIS);
+    });
+  
+    // Handle speech updates
+        // Handle speech updates
+        ipcRenderer.on('speech-status', (event, msg) => {
+          if (msg.startsWith('✅ Transcribed:')) {
+            const text = msg.replace('✅ Transcribed:', '').trim();
+            if (text) {
+              inputBox.value += (inputBox.value ? '\n' : '') + text;
+              inputBox.scrollTop = inputBox.scrollHeight;
+            }
+            statusText.textContent = '✅ Transcribed and appended.';
+          } else {
+            statusText.textContent = msg;
+          }
+
+          if (msg.includes('Speak now')) {
+            micButton.classList.add('listening');
+          } else {
+            micButton.classList.remove('listening');
+          }
+        });
+
+
+  
+    // Enter to send
     inputBox.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendToAIRIS();
+        askButton.click();
+      }
+    });
+  
+    // Mic toggle
+    micButton.addEventListener('click', async () => {
+      try {
+        if (!isRecording) {
+          isRecording = true;
+          micButton.textContent = "🛑 Stop";
+          statusText.textContent = "🎙️ Listening...";
+          await ipcRenderer.invoke('toggle-speech', 'start');
+        } else {
+          isRecording = false;
+          micButton.textContent = "🎙️ Speak";
+          statusText.textContent = "🕑 Processing...";
+          await ipcRenderer.invoke('toggle-speech', 'stop');
+        }
+      } catch (err) {
+        console.error(err);
+        statusText.textContent = "❌ Error: " + (err.message || err);
+        micButton.textContent = "🎙️ Speak";
+        isRecording = false;
       }
     });
   </script>
+  
 </body>
 </html>

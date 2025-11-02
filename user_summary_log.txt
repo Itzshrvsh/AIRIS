@@ -322,3 +322,78 @@ Never use filler like "Here's your answer".
 User: hi
 Summary: This input is a message to AI assistant named AIRIS, which aims to be a high-performance assistant with strong memory continuity.
 
+Input: create a file in python for adding two numbers
+Summary: The user wants to create a Python program that can add two numbers together.
+
+Input: def get_registered_apps():
+    """Retrieve all apps registered in App Paths in the registry."""
+    apps = {}
+    reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths"
+    
+    for hive in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+        try:
+            with winreg.OpenKey(hive, reg_path) as key:
+                for i in range(winreg.QueryInfoKey(key)[0]):
+                    try:
+                        subkey_name = winreg.EnumKey(key, i)
+                        with winreg.OpenKey(key, subkey_name) as subkey:
+                            exe_path, _ = winreg.QueryValueEx(subkey, None)  # default value
+                            apps[subkey_name.lower()] = exe_path
+                    except FileNotFoundError:
+                        continue
+        except FileNotFoundError:
+            continue
+    return apps
+Summary: This script retrieves all registered applications in the registry under App Paths in both HKEY\_LOCAL\_MACHINE and HKEY\_CURRENT\_USER. It returns a dictionary containing the lowercase names of the subkeys and their corresponding paths as values.
+
+Input: explain the basics of c++?
+Summary: The user is requesting an explanation of the fundamental concepts and syntax in C++ programming language.
+
+Input: create a file in python to add two numbers
+Summary: Create a Python program that adds two numbers.
+
+Input: # Ask for input from the user
+num1 = float(input("Enter first number: "))
+num2 = float(input("Enter second number: "))
+
+# Add the two numbers and store the result in a variable
+sum = num1 + num2
+
+# Display the result to the user
+print("The sum of", num1, "and", num2, "is:", sum)
+Summary: This code prompts the user to enter two numbers, adds them together, and then displays the sum.
+
+Input: what is quantum computing? explain in 10 word para
+Summary: Quantum computing is a new type of computing that uses the principles of quantum mechanics to perform calculations faster than traditional computers.
+
+Input: Hello
+Summary: Hello
+
+(Neutral tone)
+
+Input: What is quantum computing?
+Summary: Quantum computing is a type of computing that uses quantum-mechanical phenomena to perform operations on data for computers.
+
+Input: What is quantum computing?
+Summary: The user wants to know about quantum computing.
+
+Input: What is quantum computing?
+Summary: Quantum computing is a type of computation that uses the principles of quantum mechanics to perform operations on data, potentially allowing for faster and more efficient processing.
+
+Input: What is quantum computing? explain in short
+Summary: Quantum computing is a type of computing that uses the principles of quantum mechanics to perform calculations and operations on data.
+
+Input: What is quantum computing? explain in short like 10 lines
+Summary: Quantum computing is a type of computing that uses quantum-mechanical phenomena, such as superposition and entanglement, to perform operations on data. It has the potential to solve certain problems much faster than classical computers. However, it is still in its early stages of development.
+
+Input: What is quantum computing?
+Summary: Quantum computing is a type of computing that uses quantum bits to perform operations on data.
+
+Input: i want to see some car images
+Summary: The user is requesting to view a selection of car images.
+
+Input: send email to my friend bassunited212@gmail.com and saying that when he comes to home , we need some spicy kalan dish so he needs to buy it for us when coming
+
+⚠️ Error: Error invoking remote method 'browser-command': reply was never sent
+Summary: "Request to send email asking friend to bring spicy dish when visiting." (Neutral)
+

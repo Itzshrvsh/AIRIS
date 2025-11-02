@@ -15,6 +15,7 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "@supabase/supabase-js": "^2.75.1",
     "@vitalets/google-translate-api": "^9.2.1",
     "active-win": "^8.2.1",
@@ -24,7 +25,7 @@
     "ffmpeg-static": "^5.2.0",
     "form-data": "^4.0.3",
     "node-fetch": "^2.7.0",
-    "ollama": "^0.6.0",
+    "ollama": "^0.6.2",
     "play-dl": "^1.9.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -38,8 +39,7 @@
     "tmp": "^0.2.5",
     "windows-shortcuts": "^0.1.6",
     "youtube-sr": "^4.3.12",
-    "youtube-transcript": "^1.2.1",
-    "ytdl-core": "^4.11.5"
+    "youtube-transcript": "^1.2.1"
   },
   "devDependencies": {
     "@electron/remote": "^2.1.3",

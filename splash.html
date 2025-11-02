@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      margin: 0;
+      background: rgba(0, 0, 0, 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    video {
+      width: 600px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+    <video id="intro" autoplay muted playsinline>
+        <source src="startupdadoi.mp4" type="video/mp4">
+      </video>
+      <audio autoplay><source src="startup.mp3" type="audio/mpeg"></audio>
+      
+      <script>
+        const { ipcRenderer } = require('electron');
+        const video = document.getElementById("intro");
+      
+        video.addEventListener("ended", () => {
+          video.pause();
+          setTimeout(() => ipcRenderer.send("splash-finished"), 2000);
+        });
+      </script>
+      
+</body>
+</html>
