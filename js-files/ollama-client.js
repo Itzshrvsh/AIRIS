@@ -1,7 +1,7 @@
 const { spawn } = require('child_process');
 
 function askOllama(prompt, callback) {
-  const ollama = spawn('ollama', ['run', 'llama3']); // change model as needed
+  const ollama = spawn('ollama', ['run', 'llava']); // change model as needed
 
   let response = '';
   ollama.stdout.on('data', (data) => response += data.toString());

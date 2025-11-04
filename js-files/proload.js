@@ -32,3 +32,4 @@ contextBridge.exposeInMainWorld('AIRIS', {
   sendInstruction: (instr) => ipcRenderer.send('send-to-python', instr),
   onPythonResponse: (callback) => ipcRenderer.on('python-response', (e, msg) => callback(msg))
 });
+

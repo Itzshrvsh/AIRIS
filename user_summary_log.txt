@@ -402,3 +402,62 @@ Input: if (aiResponse === "UNKNOWN_APP") return "Could not determine app to laun
 Question: what does it do
 Summary: If `aiResponse` is "UNKNOWN_APP", the code will return a message saying "Could not determine app to launch."
 
+Input: create a py file that will add and sub same two numbers
+Summary: A Python script is requested to be created for adding and subtracting the same two numbers.
+
+Input: create a python file to train a nn to predict or logic gate values with good accuracy
+Summary: Create Python file for training neural network to accurately predict logic gate values.
+
+Input: # Load the dataset
+data = pd.read_csv('logic_gate_data.csv')
+X = data.iloc[:, :-1].values
+y = data.iloc[:, -1].values
+
+i want a hardcoded data no file
+Summary: The user wants to create a dataset without using a CSV file.
+
+Input: paste a code where i can print hello using java code
+Summary: User is asking for Java code to print "hello".
+
+Input: paste_code to add two numbers
+Summary: To add two numbers using paste\_code.
+
+Input: hi
+Summary: The message is a simple greeting.
+
+Input: paste a function that sorts an array
+Summary: The user is asking for a function to sort an array in their code or program.
+
+Input: paste a function that sorts an array
+Summary: The user wants to see a code snippet for sorting an array using a particular programming language or library.
+
+Input: 💬 Chatbot enabled
+Summary: The chatbot has been activated.
+
+Input: paste a function that sorts an array
+Summary: The user is requesting assistance in finding a function to sort an array.
+
+Input: hi
+Summary: Greeting
+
+Input: what is a bird
+Summary: A person asked about the characteristics and features of birds.
+
+Input: hi
+Summary: Greeting
+
+Input: hi
+Summary: A friendly greeting.
+
+Input: hi
+Summary: The greeting is friendly and informal.
+
+Input: hi
+Summary: A friendly greeting.
+
+Input: hi
+Summary: A friendly greeting
+
+Input: hi
+Summary: A greeting or form of acknowledgement, typically indicating a friendly and informal tone.
+

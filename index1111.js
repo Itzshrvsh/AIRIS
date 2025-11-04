@@ -802,7 +802,7 @@ ipcMain.on('popup-choice', async (event, choice, userInput) => {
   else if (choice === 'ai-search') finalText = `${storedText}\n\nQuestion: ${userInput}`;
   else return;
 
-  const resp = await analyzeSentiment(finalText);
+  const resp = await askAI(finalText);
   showMessageWindow(resp);
   closePopup();
 });

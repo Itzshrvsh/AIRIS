@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AIRIS Dropdown Drawer</title>
+<title>AIRIS Dropdown Drawer (Upward)</title>
 <style>
 html, body {
   margin: 0;
@@ -14,23 +14,22 @@ html, body {
   pointer-events: auto;
 }
 
-/* === Floating brain trigger === */
+/* === Floating trigger === */
 #trigger {
   width: 180px;
   height: 60px;
   background: rgba(10, 25, 47, 0.95);
   border-radius: 12px;
   position: fixed;
-  top: 20px;
+  bottom: 20px;
   left: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: white;
   cursor: pointer;
-  pointer-events: auto;
   box-shadow: 0 0 15px rgba(10, 25, 47, 0.6),
               inset 0 0 8px rgba(255,255,255,0.2);
   transition: all 0.25s ease;
@@ -44,13 +43,13 @@ html, body {
   box-shadow: 0 0 20px rgba(10, 25, 47, 0.9);
 }
 
-/* === Drawer === */
+/* === Drawer (slides upward above trigger) === */
 #drawer {
   position: fixed;
-  top: 90px;
   left: 20px;
+  bottom: calc(20px + 60px + 10px); /* trigger bottom + height + gap */
   width: 180px;
-  background: rgba(10, 25, 47, 0.95);
+  background: rgba(10, 25, 47, 0.96);
   border-radius: 12px;
   padding: 8px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.4);
@@ -58,13 +57,13 @@ html, body {
   flex-direction: column;
   pointer-events: auto;
   opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.25s ease;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: 3;
 }
 
 .drawer-item {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.08);
   color: white;
   padding: 10px 14px;
   border-radius: 8px;
@@ -75,7 +74,6 @@ html, body {
   margin-bottom: 6px;
   transition: background 0.2s, transform 0.2s;
 }
-
 .drawer-item:last-child { margin-bottom: 0; }
 
 .drawer-item:hover {
@@ -85,7 +83,7 @@ html, body {
 </style>
 </head>
 <body>
-  <div id="trigger">🧠</div>
+  <div id="trigger">🧠 Start</div>
   <div id="drawer"></div>
 
 <script>
@@ -112,7 +110,8 @@ function buildDrawer() {
     item.textContent = act.name;
     item.addEventListener('click', () => {
       ipcRenderer.send('menu-action', act.action);
-      hideDrawer();
+      // Only hide drawer for non-chatbot actions
+      if (act.action !== 'chatbot') hideDrawer();
     });
     drawer.appendChild(item);
   });
@@ -130,10 +129,11 @@ function showDrawer() {
 
 function hideDrawer() {
   drawer.style.opacity = '0';
-  drawer.style.transform = 'translateY(-10px)';
+  drawer.style.transform = 'translateY(10px)';
   setTimeout(() => { drawer.style.display = 'none'; }, 250);
 }
 
+// Hover behavior
 let hoverTimeout;
 trigger.addEventListener('mouseenter', () => {
   clearTimeout(hoverTimeout);

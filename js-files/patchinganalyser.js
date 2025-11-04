@@ -1,57 +1,76 @@
-const fs = require('fs');
-const axios = require('axios');
+const fs = require("fs");
+const axios = require("axios");
 
 /**
- * Sends highlighted code to Ollama/LLaMA3 to generate a patched version.
- * Cleans unwanted quotes, backticks, and extra text.
- * @param {string} code The code snippet to patch
- * @returns {Promise<string>} The cleaned patched code
+ * Generate a clean, ready-to-use patched version of a given code snippet
+ * using a local Ollama / LLaVA model endpoint.
+ * 
+ * @param {string} code - The code snippet to patch.
+ * @returns {Promise<string>} The cleaned patched code (no extra text).
  */
 async function generateCodePatch(code) {
   if (!code || !code.trim()) return "";
 
   const prompt = `
 You are AIRIS, an elite AI assistant for developers.
-The user has highlighted some code that needs to be patched.
-Return only the patched code.
-Do NOT add explanations, comments, or extra text.
-Keep all variable names and structure intact.
+Your task: fix or improve the following code while keeping its logic and variable names intact.
+Return ONLY the patched code, no explanations, text, or comments.
 
-Code to patch:
+Code:
 \`\`\`
-${code}
+${code.trim()}
 \`\`\`
 `;
 
   try {
-    const res = await axios.post("http://localhost:11434/api/generate", {
-      model: "llama3",
-      prompt,
-      stream: false
-    });
+    const res = await axios.post(
+      "http://localhost:11434/api/generate",
+      { model: "llava", prompt, stream: false },
+      { timeout: 20000 } // prevent infinite waits
+    );
 
-    let patchedCode = res.data.response?.trim() || "";
+    // Handle inconsistent API shapes (Ollama sometimes returns {data:{response:""}} or {response:""})
+    const raw = res?.data?.response || res?.data || "";
+    if (typeof raw !== "string" || !raw.trim()) return "";
 
-    // 1️⃣ Remove surrounding triple quotes or backticks
-    patchedCode = patchedCode.replace(/^["'`]{0,3}/, "").replace(/["'`]{0,3}$/, "");
+    let patchedCode = raw
+      // Remove all fenced code markers (```js, ```python, etc.)
+      .replace(/```[\s\S]*?```/g, match => match.replace(/```[a-z]*\n?|```/gi, ""))
+      // Remove Markdown style or instruction prefaces
+      .replace(/^(Here('?|’)?s( the)? patched code[:\s\n]*)/i, "")
+      // Strip any quotes wrapping the entire text
+      .replace(/^["'`]+|["'`]+$/g, "")
+      // Collapse double line breaks
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
-    // 2️⃣ Remove any "Here’s the code" or similar phrases
-    patchedCode = patchedCode.replace(/^(Here('|’)?s (the )?patched code[:\n]*)/i, "");
-
-    // 3️⃣ Remove fenced code block markers ``` or ```js
-    patchedCode = patchedCode.replace(/```(js)?\n?/gi, "").replace(/```$/gi, "");
-
-    // 4️⃣ Trim final result
-    patchedCode = patchedCode.trim();
-
-    // Optionally save logs
-    if (patchedCode) {
-      fs.appendFileSync("code_patch_log.txt", `Original:\n${code}\n\nPatched:\n${patchedCode}\n\n`);
-    }
+    // Log asynchronously for traceability
+    fs.promises
+      .appendFile(
+        "code_patch_log.txt",
+        [
+          `⏱ ${new Date().toISOString()}`,
+          `--- Original ---`,
+          code.trim(),
+          `--- Patched ---`,
+          patchedCode || "(empty result)",
+          "\n\n",
+        ].join("\n")
+      )
+      .catch(() => {}); // Ignore log errors silently
 
     return patchedCode;
   } catch (err) {
-    console.error("Error generating code patch:", err);
+    const msg = err?.response?.data?.error || err.message || "Unknown error";
+    console.error("⚠️ Code patch generation failed:", msg);
+
+    fs.promises
+      .appendFile(
+        "code_patch_log.txt",
+        `⏱ ${new Date().toISOString()} — ERROR: ${msg}\nInput:\n${code}\n\n`
+      )
+      .catch(() => {});
+
     return "";
   }
 }

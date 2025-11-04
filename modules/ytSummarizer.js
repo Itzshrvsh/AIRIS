@@ -62,7 +62,7 @@ async function summarizeYouTubeVideo(videoUrl) {
     const text = fs.readFileSync(txtPath, "utf-8");
 
     const summary = await ollama.generate({
-      model: "llama3",
+      model: "llava",
       prompt: `Summarize the following YouTube transcript clearly and concisely:\n\n${text}`,
     });
 

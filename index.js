@@ -91,6 +91,14 @@ let menuOptions = {
 
 
 let menuuiwindow = null; // track window instance
+function forceAlwaysOnTop(win) {
+  if (!win || win.isDestroyed()) return;
+
+  // Ensures window stays above everything, even full-screen apps
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setFullScreenable(false);
+}
 
 // ─── Window Creators ───────────────────────────────────────────
 // Create the popup safely
@@ -125,7 +133,7 @@ function showPopup(mouseX, mouseY) {
 
   popupWindow.loadFile('popup.html');
   
-
+  forceAlwaysOnTop(popupWindow);
   // ❌ Remove auto-close timer — just close on user selection
   popupWindow.on('closed', () => { popupWindow = null; });
 }
@@ -161,10 +169,7 @@ function createMainWindow() {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width: 400,
-    height: 600,
-    x: Math.round((width - 400) / 2),
-    y: 0,
+    fullscreen: true,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -175,7 +180,7 @@ function createMainWindow() {
       contextIsolation: false,
     },
   });
-
+  forceAlwaysOnTop(mainWindow);
   mainWindow.loadFile("index.html");
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.setAlwaysOnTop(true, "screen-saver");
@@ -187,7 +192,7 @@ function createMainWindow() {
   });
 
   setMainWindow(mainWindow);
-
+  
   mainWindow.on("closed", () => (mainWindow = null));
 
   tray = new Tray(path.join(__dirname, "icon.ico"));
@@ -216,7 +221,7 @@ function createSplash() {
   });
 
   splashWindow.loadFile("splash.html");
-
+  forceAlwaysOnTop(splashWindow);
   // Prevent closing
   splashWindow.on("close", (e) => e.preventDefault());
 
@@ -245,7 +250,7 @@ function createTerminalWindow() {
       contextIsolation: false,
     }
   });
-
+  forceAlwaysOnTop(terminalWin);
   terminalWin.loadFile("termi.html");
   terminalWin.on("closed", () => (terminalWin = null));
   terminalWin.once("ready-to-show", () => {
@@ -273,45 +278,59 @@ function openAIInputWindow() {
       contextIsolation: false,
     }
   });
-
+  forceAlwaysOnTop(inputWindow);
   inputWindow.loadFile("ai_input.html");
   inputWindow.on("closed", () => (inputWindow = null));
 }
 
 
 function createMenuUI() {
-  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const winWidth = 400, winHeight = 600;
 
-  if (menuuiwindow) return menuuiwindow; // reuse existing window
+  if (menuuiwindow) {
+    menuuiwindow.show();
+    return menuuiwindow;
+  }
 
   menuuiwindow = new BrowserWindow({
     width: winWidth,
     height: winHeight,
-    x: 350,
-    y: 0,
+    // 👇 Position near bottom-left corner
+    x: 2,
+    y: height - winHeight - 20,
     frame: false,
     transparent: true,
     resizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
     hasShadow: false,
-    focusable: false,
+    focusable: true, // allow keyboard input for search
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
   });
 
-  menuuiwindow.setIgnoreMouseEvents(false, { forward: true });
+  forceAlwaysOnTop(menuuiwindow);
+  menuuiwindow.setIgnoreMouseEvents(false);
   menuuiwindow.removeMenu();
   menuuiwindow.loadFile('menuui.html');
 
-  // Instead of destroying, just hide window on close
-  if(menuuiwindow) {
-    menuuiwindow.show(); // to reopen
-}
+  // Fade-in style appearance
+  menuuiwindow.once('ready-to-show', () => {
+    menuuiwindow.showInactive(); // show without stealing focus
+  });
 
+  // Instead of closing, just hide
+  // Instead of closing, just hide
+  menuuiwindow.on('close', (e) => {
+    e.preventDefault();
+    if (menuuiwindow && !menuuiwindow.isDestroyed()) {
+      menuuiwindow.hide();
+    }
+  });
+  
 
   return menuuiwindow;
 }
@@ -345,7 +364,7 @@ function showMessageWindow(msg, options = {}) {
       contextIsolation: false,
     },
   });
-
+  forceAlwaysOnTop(messageWindow);
   messageWindow.setIgnoreMouseEvents(true); // click-through
   messageWindow.setAlwaysOnTop(true, 'screen-saver');
   messageWindow.loadFile("messagewin.html");
@@ -399,7 +418,7 @@ async function openNEURALIS(msg = null, updateExisting = true) {
 
     // 4️⃣ Load interface file
     neuraliswindow.loadFile("neuralis.html");
-
+    forceAlwaysOnTop(neuraliswindow);
     // 5️⃣ When loaded, send message if provided
     neuraliswindow.webContents.once('did-finish-load', () => {
       if (msg) neuraliswindow.webContents.send('display-message', msg);
@@ -998,7 +1017,7 @@ function runPythonBridge(script, args) {
 
 async function runAskAI(userInput) {
   const ollama = "http://localhost:11434/api/generate";
-  const model = "llama3"; // or your chosen model
+  const model = "llava"; // or your chosen model
 
   const res = await fetch(ollama, {
     method: "POST",
@@ -1026,7 +1045,7 @@ ipcMain.handle("ask-ai", async (_, userInput) => {
       }
     }
 
-    // === Fetch last few memories from Supabase ===
+    // === Fetch recent memory from Supabase ===
     const { data: previousMemory, error: fetchError } = await supabase
       .from("memories")
       .select("input_text, response_text")
@@ -1035,33 +1054,23 @@ ipcMain.handle("ask-ai", async (_, userInput) => {
 
     if (fetchError) console.error("❌ Supabase fetch error:", fetchError);
 
-    // === Build memory context string ===
-    let memoryContext = "";
-    if (previousMemory && previousMemory.length > 0) {
-      memoryContext = previousMemory
-        .map(m => `User: ${m.input_text}\nAI: ${m.response_text || "(no response saved)"}`)
-        .join("\n---\n");
-    } else {
-      memoryContext = "No prior memory found. You’re starting fresh.";
-    }
+    let memoryContext = previousMemory?.length
+      ? previousMemory.map(m => `User: ${m.input_text}\nAI: ${m.response_text || "(no response saved)"}`).join("\n---\n")
+      : "No prior memory found. You’re starting fresh.";
 
-    // === System + Memory Context ===
+    // === System + Context ===
     const systemPrompt = `
 You are AIRIS — a sharp, context-aware AI assistant using LLaVA.
-You have access to your past 5 memories.
-Use memory context to maintain continuity.
-Never repeat the same answers.
-Be concise and technically correct.
-Speak about the content only if relevant.
-don't use other memory outside this context.
+Use the memory context to maintain continuity but never repeat answers.
+Focus on clarity, brevity, and technical precision.
+Do not recall information outside this memory context.
 `.trim();
 
     const finalPrompt = `
-Memory Context: heres what you remember from our past interactions:
+Memory Context:
 ${memoryContext}
-dont mention it in the response unless asked.
-just answer the question based on the context if relevant.
- ${systemPrompt}
+
+${systemPrompt}
 
 User: ${userInput}
 Assistant:
@@ -1071,7 +1080,7 @@ Assistant:
     const response = await askAI(finalPrompt);
     console.log("💬 LLaVA Response:", response);
 
-    // === Store new interaction in Supabase ===
+    // === Store interaction ===
     const { error: insertError } = await supabase.from("memories").insert({
       user_id: userName,
       input_text: userInput,
@@ -1081,49 +1090,85 @@ Assistant:
     if (insertError) console.error("❌ Supabase insert error:", insertError);
     else console.log("☁️ Memory updated in Supabase");
 
-    // === Sentiment Analysis (optional) ===
+    // === Optional sentiment analysis ===
     const sentimentData = await analyzeSentiment(userInput);
     console.log("🧩 Sentiment:", sentimentData);
 
-    // === Handle code-related triggers ===
+    // === Code block detection ===
     const codeMatch = response.match(/```(.*?)\n([\s\S]*?)```/);
-    const loweredInput = userInput.toLowerCase().trim();
-    const fileTriggers = ["create a file", "create file", "new file", "make file", "cf"];
+    const codeLang = codeMatch?.[1]?.trim() || null;
+    const codeContent = codeMatch?.[2]?.trim() || "";
 
-    if (fileTriggers.some(t => loweredInput.includes(t)) && codeMatch) {
-      const language = codeMatch[1]?.trim() || "txt";
-      const code = codeMatch[2]?.trim() || "";
-      if (!code) {
-        showMessageWindow("⚠️ AI didn’t provide valid code to save.");
-        return response;
-      }
-      const filePath = saveCodeToDesktop(code, language, `Generated ${language} Code`);
+    // === Contextual intent detection (no keywords) ===
+    const lowered = userInput.toLowerCase();
+    const intent = (() => {
+      // Detect "create file" intent
+      if (
+        /\b(make|create|generate|produce|save)\b.+\b(file|code|script|program)\b/i.test(userInput)
+      ) return "create_file";
+
+      // Detect "paste code" intent
+      if (
+        /\b(paste|insert|apply|write)\b.+\b(code|snippet|program)\b/i.test(userInput)
+      ) return "paste_code";
+
+      return null;
+    })();
+
+    // === Handle intents ===
+    if (intent === "create_file" && codeContent) {
+      const language = codeLang || "txt";
+      const filePath = saveCodeToDesktop(codeContent, language, `Generated ${language} Code`);
       shell.openPath(filePath);
       showMessageWindow(`📄 ${language.toUpperCase()} code saved as ${path.basename(filePath)}.`);
-    } else if ((loweredInput.includes("paste a code") || loweredInput.includes("paste code")) && codeMatch) {
-      const code = codeMatch[2]?.trim() || "";
-      if (!code) {
-        showMessageWindow("⚠️ AI didn’t provide valid code to paste.");
-        return response;
-      }
-      if (!lastCursorPos) {
-        showMessageWindow("⚠️ Cursor position not stored! Press Ctrl+Shift+C before using paste.");
-        return response;
-      }
-      robot.moveMouse(lastCursorPos.x, lastCursorPos.y);
-      robot.mouseClick();
-      showMessageWindow(`💬 Pasting code where your cursor was — starting in 2s...`);
-      setTimeout(() => {
-        clipboard.writeText(code);
-        robot.keyTap("v", "control");
-      }, 2000);
+    }
+
+    else if (intent === "paste_code") {
+  if (!lastCursorPos) {
+    showMessageWindow("⚠️ Cursor position not stored! Press Ctrl+Shift+C before using paste.");
+    return response;
+  }
+
+  // Step 1: Generate code based on user request
+  const userRequest = message?.trim();
+  if (!userRequest) {
+    showMessageWindow("⚠️ No request provided for code generation!");
+    return response;
+  }
+
+  showMessageWindow("⚙️ Generating code snippet...");
+
+  try {
+    // You can plug your AI model or custom logic here
+    const generatedCode = await generateCodeFromRequest(userRequest);
+
+    // Step 2: Focus the window and move cursor
+    robot.moveMouse(lastCursorPos.x, lastCursorPos.y);
+    robot.mouseClick();
+
+    // Step 3: Paste the generated code
+    clipboard.writeText(generatedCode);
+    await new Promise(res => setTimeout(res, 100)); // Give clipboard a moment
+    robot.keyTap("v", "control");
+
+    showMessageWindow("✅ Code inserted successfully!");
+  } catch (err) {
+    showMessageWindow("❌ Error generating or pasting code: " + err.message);
+  }
+
+  return response;
+}
+
+
+    else if (!intent && codeContent) {
+      // Just show code if context isn't file-related
+      showMessageWindow("📦 Code detected — but no 'create' or 'paste' intent found. Displaying only.");
     }
 
     return response;
 
   } catch (err) {
     console.error("[❌ askAI failed]:", err.message);
-    console.error("⚠️ Failed to update memory or Supabase:", err);
     showMessageWindow("🧨 AI exploded. Check your memory or Supabase config.");
     return "AI error.";
   }
@@ -1153,7 +1198,7 @@ ipcMain.on('popup-choice', async (event, choice, userInput) => {
   else if (choice === 'ai-search') finalText = `${storedText}\n\nQuestion: ${userInput}`;
   else return;
 
-  const resp = await analyzeSentiment(finalText);
+  const resp = await askAI(finalText);
   showMessageWindow(resp);
   closePopup();
 });
@@ -1165,7 +1210,7 @@ ipcMain.on('memory-log', async (event, userInput) => {
   const sentimentResult = sentiment.analyze(userInput);
   const mood = sentimentResult.score > 0 ? 'positive' :
                sentimentResult.score < 0 ? 'negative' : 'neutral';
-
+ 
   await supabase.from('memory_logs').insert({
     user_input: userInput,
     sentiment: mood,
@@ -1394,12 +1439,27 @@ app.whenReady().then(async () => {
       }
     }, 2 * 60 * 1000);
 
+    
+    let autoCloseTimer = null;
+
     globalShortcut.register('Ctrl+Shift+Z', () => {
       if (menuuiwindow && !menuuiwindow.isDestroyed()) {
+        // If it's already open, close immediately
         menuuiwindow.close();
         menuuiwindow = null;
+        clearTimeout(autoCloseTimer);
       } else {
+        // Create and show the window
         menuuiwindow = createMenuUI();
+
+        // Automatically close after 10 seconds
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = setTimeout(() => {
+          if (menuuiwindow && !menuuiwindow.isDestroyed()) {
+            menuuiwindow.close();
+            menuuiwindow = null;
+          }
+        }, 4000); // 10 seconds = 10000 ms
       }
     });
     const keywordMap = {

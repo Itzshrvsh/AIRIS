@@ -1,38 +1,59 @@
+
 body {
-  margin: 0;
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: transparent;
-}
-
-.island {
-  width: 200px;
-  height: 60px;
-  background: black;
-  color: white;
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
   overflow: hidden;
 }
 
-.island.expanded {
-  width: 300px;
-  height: 200px;
-  border-radius: 40px;
-}
-
-.options {
-  display: none;
-  flex-direction: column;
-  margin-top: 10px;
-}
-
-.island.expanded .options {
+#eyes {
   display: flex;
+  gap: 60px;
 }
+
+.eye {
+  width: 80px;
+  height: 80px;
+  background: #fff;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 15px #000 inset;
+}
+
+.pupil {
+  width: 25px;
+  height: 25px;
+  background: #000;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  transform: translate(-12px, -12px);
+  transition: transform 0.2s ease;
+}
+
+.eyelid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #111;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.eyelid.closed {
+  opacity: 1;
+}
+
+/* 🎭 Emotion Styles */
+.eye-happy .pupil { transform: translate(-12px, -6px) scale(1.1); }
+.eye-sad .pupil { transform: translate(-12px, 4px) scale(0.9); }
+.eye-angry .eye { transform: rotate(-8deg); }
+.eye-surprised .pupil { transform: translate(-12px, -12px) scale(1.2); }
+.eye-tired .eyelid { opacity: 0.6; }
+.eye-focused .pupil { transform: translate(-12px, -12px) scale(1.4); }

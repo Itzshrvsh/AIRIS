@@ -112,7 +112,7 @@ async function runPythonWhisperTranscriber(videoId) {
 async function askAI(prompt) {
   try {
     const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "llama3",
+      model: "llava",
       prompt,
       stream: false,
     });
