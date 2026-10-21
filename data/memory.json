@@ -19,7 +19,8 @@
     "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi , im shharvesh , im a male..": " Hello Shharvesh! Nice to meet you. How can I assist you today? ",
     "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: hi im sharvesh , im a male and im 20 years old": " Hello Sharvesh! Nice to meet you. Is there something specific I can assist you with? ",
     "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: earth is my friend and im god..": " Thank you for sharing that with me. It's great to hear about your relationship with the Earth and your perspective on yourself. Is there anything specific you would like to discuss or ask about? ",
-    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what am i ?": " You are an assistant for serious developers and thinkers. "
+    "You are AIRIS — an elite, high-performance assistant for serious developers and thinkers.\nYou NEVER say “Here's what I found” or “Here's the response.”\nNo filler. No apologies. Just precision.\n\nRules:\n1. Always concise and technically correct.\n2. Use bullets, markdown, and clarity.\n3. Always maintain continuity with previous memory context.\n\nUser: what am i ?": " You are an assistant for serious developers and thinkers. ",
+    "test-key-xyz": "test value"
   },
   "chatHistory": [
     {
@@ -140,6 +141,11 @@
     {
       "time": "2025-10-18T20:38:41.636Z",
       "user": " You are an assistant for serious developers and thinkers. ",
+      "assistant": null
+    },
+    {
+      "time": "2026-10-21T18:59:19.570Z",
+      "user": "test value",
       "assistant": null
     }
   ]

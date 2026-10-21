@@ -1,12 +1,16 @@
 const fs = require('fs');
-const path = './data/memory.json';
+const path = require('path');
+// Data lives next to the app root so it survives being launched from any CWD
+// (root/data/memory.json — see also data/ai-config.json for AI settings).
+const DATA_DIR = path.join(__dirname, 'data');
+const memoryPath = path.join(DATA_DIR, 'memory.json');
 const { execSync } = require('child_process');
 
 // Utility: Load memory safely
 function loadMemory() {
-  if (!fs.existsSync(path)) return { chatHistory: [], summaries: {} };
+  if (!fs.existsSync(memoryPath)) return { chatHistory: [], summaries: {} };
   try {
-    const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(memoryPath, 'utf8'));
     // Ensure both keys exist
     if (!data.chatHistory) data.chatHistory = [];
     if (!data.summaries) data.summaries = {};
@@ -19,7 +23,8 @@ function loadMemory() {
 
 // Save memory safely
 function saveMemory(data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2));
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(memoryPath, JSON.stringify(data, null, 2));
 }
 
 // Summarize input into keywords / short form
