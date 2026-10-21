@@ -5,6 +5,8 @@ out/
 *.log
 lib/
 Scripts/
+!scripts/
+!scripts/**
 include/
 Testfolder/
 AIRIS.exe/
