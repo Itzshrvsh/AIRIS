@@ -9,7 +9,9 @@ const ytdl = require("@distube/ytdl-core");
 const fs = require("fs");
 const { spawn, exec , execSync } = require("child_process");
 const util = require("util");
-const robot = require("robotjs");
+// Input control: native robotjs when it builds, pyautogui worker otherwise
+// (see js-files/input.js). index.js uses the same `robot` API either way.
+const robot = require("./js-files/input").robot;
 const {summarizeYouTubeVideo} = require("./modules/transcriber");
 const { execFile } = require("child_process");
 
