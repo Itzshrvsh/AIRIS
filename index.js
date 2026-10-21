@@ -1396,25 +1396,30 @@ ipcMain.on('set-menu-option', (event, key, value) => {
 });
 
 function checkDependencies() {
+  // VS Code CLI (editor integration helper) — a warning, not a blocker.
   exec('where code', (err) => {
     if (err) {
-      // Missing VS Build Tools
-      dialog.showErrorBox(
-        "Missing Dependency",
-        "Visual Studio Build Tools not found. Please install:\nhttps://visualstudio.microsoft.com/visual-cpp-build-tools/"
-      );
+      console.warn("⚠️ 'code' CLI not on PATH — VS Code editor integration may be limited.");
     }
   });
 
-  exec('ollama list', (err) => {
-    if (err) {
-      // Missing VS Build Tools
-      dialog.showErrorBox(
-        "Missing Dependency",
-        "Please install Ollama from:\nhttps://ollama.com/download"
-      );
+  // Only nag about Ollama when the user actually configured local Ollama.
+  try {
+    const cfg = aiConfig.getActiveConfig();
+    const isLocalOllama = /\/\/(localhost|127\.0\.0\.1):11434/i.test(cfg.baseURL || "");
+    if (isLocalOllama) {
+      exec('ollama list', (err) => {
+        if (err) {
+          dialog.showErrorBox(
+            "Missing Dependency",
+            "AIRIS is configured to use local Ollama, but the `ollama` CLI is not available.\n\nInstall it from https://ollama.com/download — or switch providers via AI Settings."
+          );
+        }
+      });
     }
-  });
+  } catch (err) {
+    console.warn("checkDependencies skipped:", err.message);
+  }
 }
 
 ipcMain.handle("ask-ai2", async (event, userInput) => {

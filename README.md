@@ -41,6 +41,15 @@ Key abilities:
 
 Environment variables: `SUPABASE_URL` / `SUPABASE_KEY` in a local `.env` (never committed) power the optional cloud memory; `.env.example` documents the expected keys.
 
+### Desktop input (robotjs with pyautogui fallback)
+
+Keyboard/mouse control (`robot.*`) uses the native `robotjs` module when it has
+been built. robotjs needs the **ClangCL** component of Visual Studio Build
+Tools on modern Electron; without it AIRIS automatically switches to a
+persistent **pyautogui worker** (`python/input_worker.py`, driven by
+`js-files/input.js`) — no features are lost. Restore the native backend with
+`npx electron-rebuild -f -w robotjs` once the ClangCL component is installed.
+
 ---
 
 ## 🧭 Global shortcut keys
@@ -115,10 +124,13 @@ Other hotkeys from earlier versions are described in `menu.html` / `notes.txt`; 
 * `index.js` — main Electron process, windows, hotkeys, IPC
 * `js-files/aiConfig.js` — central AI provider configuration + client
 * `js-files/aiRequest.js` — one-shot prompt helper (uses the central config)
+* `js-files/input.js` — robotjs / pyautogui input control
 * `js-files/screenObserver.js` — screen capture + vision analysis
 * `settings.html` — AI Settings UI
 * `airis_config.py` — Python-side reader for the same configuration
 * `test/aiConfig.test.js` — unit tests (`npm test`)
+* `scripts/smoke-main.js` — head-less Electron smoke check (`npx electron scripts/smoke-main.js`)
+* `scripts/test-input-worker.js` — zero-displacement input-worker check
 
 ---
 
