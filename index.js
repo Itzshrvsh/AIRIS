@@ -1510,8 +1510,18 @@ app.whenReady().then(async () => {
   createSplash();
 
   ensureTray();
-  console.log("✅ Ensuring default AI model is available");
-  exec('ollama pull llava');
+  // Only auto-pull a model for the default local Ollama setup: with any
+  // other provider/host, pulling from the `ollama` CLI would be wrong/noisy.
+  try {
+    const cfg = aiConfig.getActiveConfig();
+    const isLocalOllama = /\/\/(localhost|127\.0\.0\.1):11434/i.test(cfg.baseURL || "");
+    if (isLocalOllama && cfg.model) {
+      console.log(`✅ ollama pull ${cfg.model}`);
+      exec(`ollama pull ${cfg.model}`);
+    }
+  } catch (err) {
+    console.warn("Skipping ollama pull:", err.message);
+  }
   checkDependencies();
   // ipcMain.on("move-mouse", (event, coords) => {
   //   const { x, y } = coords;

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openai/gpt-oss-20b",
+  "provider": {
+    "Lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "openai/gpt-oss-20b",
+      "options": {
+        "baseURL": "http://192.168.1.13:1234/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "openai/gpt-oss-20b": {
+          "name": "openai/gpt-oss-20b",
+          "limit": {
+            "context": 36608,
+            "output": 20000
+          }
+        }
+      }
+    }
+  }
+}

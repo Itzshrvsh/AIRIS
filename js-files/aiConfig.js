@@ -15,8 +15,12 @@
 const fs = require("fs");
 const path = require("path");
 
+// data/ dir at the project root. Tests (and power users) can point AIRIS at
+// a different file via AIRIS_CONFIG_FILE without touching app code.
 const CONFIG_DIR = path.join(__dirname, "..", "data");
-const CONFIG_FILE = path.join(CONFIG_DIR, "ai-config.json");
+const CONFIG_FILE = process.env.AIRIS_CONFIG_FILE
+  ? path.resolve(process.env.AIRIS_CONFIG_FILE)
+  : path.join(CONFIG_DIR, "ai-config.json");
 
 // ─── Errors ──────────────────────────────────────────────────────────────
 class ConfigError extends Error {
@@ -549,9 +553,13 @@ async function testConnection(overrides = {}) {
  *             it resolves the model from featureModels first.
  *  Returns the assistant text. onChunk is called per streamed token.
  */
-async function chat({ messages, model, stream = false, onChunk, temperature, maxTokens, timeoutMs, signal, feature, config: configOverride } = {}) {
-  let config = configOverride && typeof configOverride === "object"
-    ? mergeWithDefaults({ ...getActiveConfig(), ...configOverride })
+async function chat({ messages, model, stream = false, onChunk, temperature, maxTokens, timeoutMs, signal, feature, config: configOverride, baseURL, apiKey } = {}) {
+  const partialOverride =
+    baseURL !== undefined || apiKey !== undefined
+      ? { ...(configOverride || {}), ...(baseURL !== undefined ? { baseURL } : {}), ...(apiKey !== undefined ? { apiKey } : {}) }
+      : configOverride;
+  let config = partialOverride && typeof partialOverride === "object"
+    ? mergeWithDefaults({ ...getActiveConfig(), ...partialOverride })
     : getActiveConfig();
   const resolved = model || (feature ? resolveFeatureModel(feature, config) : config.model);
   if (!resolved || !String(resolved).trim()) {
@@ -627,13 +635,19 @@ async function chat({ messages, model, stream = false, onChunk, temperature, max
   try {
     if (body.stream) return await _parseStream(res, onChunk);
     const json = await res.json();
+    const msg = json.choices?.[0]?.message || {};
+    // Some reasoning models keep an empty `content` while emitting text via
+    // `reasoning_content` (LM Studio); prefer real content, then reasoning.
     const content =
-      json.choices?.[0]?.message?.content ??
-      json.choices?.[0]?.text ??
+      (typeof msg.content === "string" && msg.content.trim() ? msg.content : undefined) ??
+      (typeof msg.reasoning_content === "string" && msg.reasoning_content.trim() ? msg.reasoning_content : undefined) ??
+      (typeof json.choices?.[0]?.text === "string" ? json.choices?.[0]?.text : undefined) ??
       (typeof json.response === "string" ? json.response : undefined);
-    if (content === undefined || content === null) {
+    if (content === undefined || content === null || content === "") {
+      const finish = json.choices?.[0]?.finish_reason;
+      const fmtFinish = finish ? ` (finish_reason: ${finish})` : "";
       throw new ConfigError(
-        `The server returned a chat response without content (HTTP ${res.status}). ${typeof json === "object" ? _clip(JSON.stringify(json), 200) : ""}`.trim(),
+        `The server returned an empty chat response${fmtFinish}. If this is a reasoning model, raise the max tokens so it can finish reasoning.`,
         { code: "bad_response_shape" }
       );
     }
@@ -691,10 +705,16 @@ async function _parseStream(res, onChunk) {
       } catch {
         continue; // ignore keep-alives / partial lines
       }
-      const delta = json.choices?.[0]?.delta?.content ?? json.choices?.[0]?.text ?? "";
-      if (delta) {
-        full.push(delta);
-        onChunk && onChunk(delta);
+      const delta = json.choices?.[0]?.delta || {};
+      // Reasoning models may stream via reasoning_content (LM Studio etc.)
+      const piece =
+        (typeof delta.content === "string" && delta.content) ||
+        (typeof delta.reasoning_content === "string" && delta.reasoning_content) ||
+        (typeof json.choices?.[0]?.text === "string" && json.choices?.[0]?.text) ||
+        "";
+      if (piece) {
+        full.push(piece);
+        onChunk && onChunk(piece);
       }
     }
   }

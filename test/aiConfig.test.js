@@ -282,6 +282,25 @@ function tempConfigFile() {
     aiConfig.setFetchImpl(() => Promise.resolve(jsonResponse(404, "", "Not Found")));
     await expectConfigError(() => aiConfig.chat({ messages: [{ role: "user", content: "x" }] }), "http_error", "404");
   });
+  await test("chat: reasoning_content used when content empty (LM Studio reasoning models)", async () => {
+    aiConfig.setFetchImpl(() =>
+      Promise.resolve(
+        jsonResponse(200, {
+          choices: [{ message: { role: "assistant", content: "", reasoning_content: "thinking output" }, finish_reason: "length" }],
+        })
+      )
+    );
+    const out = await aiConfig.chat({ messages: [{ role: "user", content: "x" }] });
+    assert.strictEqual(out, "thinking output");
+  });
+  await test("chat: empty content + empty reasoning → explicit error naming finish_reason", async () => {
+    aiConfig.setFetchImpl(() =>
+      Promise.resolve(
+        jsonResponse(200, { choices: [{ message: { role: "assistant", content: "" }, finish_reason: "length" }] })
+      )
+    );
+    await expectConfigError(() => aiConfig.chat({ messages: [{ role: "user", content: "x" }] }), "bad_response_shape", "finish_reason");
+  });
   await test("chat: timeout produces a timeout error", async () => {
     aiConfig.setFetchImpl(() => new Promise(() => {})); // hangs forever
     await expectConfigError(
