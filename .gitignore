@@ -6,7 +6,13 @@ out/
 lib/
 Scripts/
 include/
-test/
 Testfolder/
 AIRIS.exe/
 .vscode/
+
+# secrets — never commit
+.env
+.env.*
+
+# AI provider config may contain API keys — keep it on this machine only
+data/ai-config.json
