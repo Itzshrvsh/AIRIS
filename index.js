@@ -25,7 +25,28 @@ const ws = require("windows-shortcuts");
 const axios = require('axios');
 const clipboardy = require('clipboardy');
 let pyProcess = null;
-const OLLAMA_URL = "http://localhost:11434/api/generate";
+
+/**
+ * Generate code from a natural-language request via the central AI config.
+ * Used by the "paste_code" intent of the ask-ai flow. The generator config:
+ * ─ provider/base URL/key/model are shared with every other AI feature.
+ */
+async function generateCodeFromRequest(request) {
+  const prompt = `
+You are AIRIS — an expert code generator.
+Write complete, runnable code for the following request.
+Return ONLY the code inside one fenced block (e.g. \`\`\`python ... \`\`\`).
+No explanations before or after.
+
+Request: ${request}
+`.trim();
+
+  const raw = (await aiConfig.generateText(prompt, { maxTokens: 900 })) || "";
+  const match = raw.match(/```[a-z]*\n([\s\S]*?)```/i);
+  if (match && match[1] && match[1].trim()) return match[1].trim();
+  // Model sometimes returns bare code without fences
+  return raw.trim();
+}
 // ─── Local imports ──────────────────────────────────────────────
 const { askAI } = require("./js-files/aiRequest");
 const { analyzeScreen , setMainWindow } = require('./js-files/screenObserver');
@@ -36,6 +57,113 @@ const { runYouTubeSummaryWithProgress } = require("./js-files/youtubeSummarizer"
 const { saveCodeToDesktop } = require("./js-files/fileGenerator");
 const { remember, recall, logChat } = require("./memoryManager");
 const systemInstructions = require("./js-files/systemInstructions");
+// ─── Central AI configuration ─────────────────────────────────
+const aiConfig = require("./js-files/aiConfig");
+
+// ─── AI Settings window (single source of truth for provider/model) ──────
+let aiSettingsWindow = null;
+
+function createAISettingsWindow(focusOnly = true) {
+  if (aiSettingsWindow && !aiSettingsWindow.isDestroyed()) {
+    if (focusOnly) {
+      aiSettingsWindow.show();
+      aiSettingsWindow.focus();
+    }
+    return aiSettingsWindow;
+  }
+  aiSettingsWindow = new BrowserWindow({
+    width: 620,
+    height: 740,
+    minWidth: 520,
+    minHeight: 560,
+    title: "AIRIS — AI Settings",
+    backgroundColor: "#0b1220",
+    frame: false,
+    resizable: true,
+    fullscreenable: false,
+    maximizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, "./js-files/proload.js"),
+      nodeIntegration: true,
+      contextIsolation: false,
+      additionalArguments: [],
+    },
+  });
+  aiSettingsWindow.setMenuBarVisibility(false);
+  aiSettingsWindow.loadFile("settings.html");
+  aiSettingsWindow.on("closed", () => { aiSettingsWindow = null; });
+  return aiSettingsWindow;
+}
+
+// Central AI config IPC. The settings window is the only caller that
+// needs the raw API key; nobody should log it.
+ipcMain.handle("ai-config:get", () => aiConfig.describeForUI());
+
+ipcMain.handle("ai-config:set", (event, patch) => {
+  const clean = patch && typeof patch === "object" ? patch : {};
+  delete clean.presets; // not persistable
+  let saved;
+  try {
+    saved = aiConfig.updateActiveConfig(clean);
+  } catch (err) {
+    console.error("[ai-config:set] rejected:", err.message);
+    return { ok: false, error: err.message };
+  }
+  // Every window re-reads config on demand, but notify listeners.
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed() && win.webContents) {
+      win.webContents.send("ai-config-changed", saved);
+    }
+  }
+  return { ok: true, config: saved };
+});
+
+// Test connection against either the saved config or the values currently
+// typed in the settings form (passed as overrides.config).
+ipcMain.handle("ai-config:test", async (_event, overrides = {}) => {
+  const result = await aiConfig.testConnection({ config: overrides });
+  const statusPatch = {
+    state: result.ok ? "ok" : "error",
+    message: result.ok ? result.message : result.error,
+    checkedAt: new Date().toISOString(),
+  };
+  try { aiConfig.setStatus(result.ok ? "ok" : "error", statusPatch.message); } catch { /* best-effort */ }
+  return result;
+});
+
+ipcMain.handle("ai-config:models", async (_event, overrides = {}) => {
+  try {
+    const models = await aiConfig.listModels({ ...(overrides || {}) });
+    return { ok: true, models };
+  } catch (err) {
+    return { ok: false, error: err.message, code: err.code };
+  }
+});
+
+ipcMain.on("open-ai-settings", () => {
+  createAISettingsWindow(true);
+});
+
+ipcMain.on("close-ai-settings", () => {
+  if (aiSettingsWindow && !aiSettingsWindow.isDestroyed()) aiSettingsWindow.close();
+});
+
+ipcMain.handle("ai:chat", async (_event, payload = {}) => {
+  // Renderer windows (terminal, etc.) route AI calls through the main
+  // process so they always share the central configuration.
+  try {
+    const text = await aiConfig.chat({
+      messages: Array.isArray(payload.messages) ? payload.messages : [{ role: "user", content: String(payload.content ?? "") }],
+      stream: false,
+      feature: payload.feature,
+      maxTokens: payload.maxTokens,
+      temperature: payload.temperature,
+    });
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
 let latestCopiedText = '';
 // ─── Globals ───────────────────────────────────────────────────
 let mainWindow, menuWindow, inputWindow, messageWindow, glowWindow, terminalWin, tray, inputfield;
@@ -76,12 +204,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase URL or Key is missing! Check your .env file');
+    console.warn('⚠️ Supabase URL or Key missing — memory features disabled (set SUPABASE_URL/SUPABASE_KEY in .env)');
 }
 
 const { createClient } = require('@supabase/supabase-js');
-const { use } = require("react");
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 let menuOptions = {
   chatbot: false,
   terminal: false,
@@ -139,11 +266,7 @@ function showPopup(mouseX, mouseY) {
 }
 
 // ─── Utility ───────────────────────────────────────────────────
-function closeAllWindowsExcept(except = null) {
-  [inputWindow, messageWindow, menuWindow].forEach(win => {
-    if (win && win !== except && !win.isDestroyed()) win.close();
-  });
-}
+// (closeAllWindowsExcept is defined below in the Utility section)
 
 // ─── Window Creators ───────────────────────────────────────────
 // function createMenuWindow() {
@@ -164,7 +287,8 @@ function closeAllWindowsExcept(except = null) {
 //   menuWindow.on("closed", () => (menuWindow = null));
 // }
 
-function createMainWindow() {
+function ensureMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
   closeAllWindowsExcept(null);
   const { width } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -192,17 +316,41 @@ function createMainWindow() {
   });
 
   setMainWindow(mainWindow);
-  
-  mainWindow.on("closed", () => (mainWindow = null));
+  ensureTray();
 
-  tray = new Tray(path.join(__dirname, "icon.ico"));
-  const contextMenu = Menu.buildFromTemplate([
-    { label: "Show App", click: () => mainWindow.show() },
-    { label: "Quit", click: () => app.quit() },
-  ]);
-  tray.setToolTip("My Electron App");
-  tray.setContextMenu(contextMenu);
+  mainWindow.on("closed", () => (mainWindow = null));
+  return mainWindow;
 }
+
+function createMainWindow() {
+  ensureMainWindow();
+}
+
+function ensureTray() {
+  if (tray && !tray.isDestroyed()) return;
+  try {
+    const trayIcon = path.join(__dirname, app.isPackaged ? "icon.png" : "icon.ico");
+    const iconPath = fs.existsSync(trayIcon) ? trayIcon : path.join(__dirname, "icon.png");
+    tray = new Tray(iconPath);
+    const contextMenu = Menu.buildFromTemplate([
+      { label: "Show App", click: () => ensureMainWindow() },
+      { label: "AI Settings", click: () => createAISettingsWindow(true) },
+      { label: "Quit", click: () => app.quit() },
+    ]);
+    tray.setToolTip("AIRIS");
+    tray.setContextMenu(contextMenu);
+  } catch (err) {
+    console.warn("⚠️ Tray could not be created:", err.message);
+  }
+}
+
+function destroySplashOnce() {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.destroy();
+  }
+  splashWindow = null;
+}
+
 function createSplash() {
   splashWindow = new BrowserWindow({
     width: 800,
@@ -222,15 +370,26 @@ function createSplash() {
 
   splashWindow.loadFile("splash.html");
   forceAlwaysOnTop(splashWindow);
-  // Prevent closing
-  splashWindow.on("close", (e) => e.preventDefault());
 
-  // After 4 seconds, close splash and open main window
+  // Any of these paths finishes the splash exactly once:
+  //  - renderer sends "splash-finished" when the intro video ends
+  //  - this safety timeout fires (video codec issues / disabled autoplay)
+  let splashDone = false;
+  splashWindow.on("close", (e) => {
+    if (!splashDone) e.preventDefault();
+    else destroySplashOnce();
+  });
+  ipcMain.once("splash-finished", () => {
+    if (splashDone) return;
+    splashDone = true;
+    ensureMainWindow();
+    destroySplashOnce();
+  });
   setTimeout(() => {
-    if (splashWindow) {
-      splashWindow.destroy();
-      createMainWindow();
-    }
+    if (splashDone) return;
+    splashDone = true;
+    ensureMainWindow();
+    destroySplashOnce();
   }, 6000);
 }
 function createTerminalWindow() {
@@ -442,11 +601,19 @@ async function openNEURALIS(msg = null, updateExisting = true) {
     console.error("Error in openNEURALIS:", err);
   }
 }
+// getPythonScript is defined once below (res/python with root fallback).
 function getPythonScript(scriptName) {
+  // Scripts live in res/python (packaged via extraResources); some dev
+  // scripts live in the project root (e.g. bridge_runner.py).
   const basePath = app.isPackaged
-    ? path.join(process.resourcesPath, 'python')
-    : path.join(process.cwd(), 'python');
-  return path.join(basePath, scriptName);
+    ? path.join(process.resourcesPath, "res", "python")
+    : path.join(process.cwd(), "res", "python");
+  const scriptPath = path.join(basePath, scriptName);
+  if (app.isPackaged || fs.existsSync(scriptPath)) return scriptPath;
+  const rootFallback = path.join(process.cwd(), scriptName);
+  if (fs.existsSync(rootFallback)) return rootFallback;
+  console.warn(`[PYTHON PATH] ⚠️ Script not found: ${scriptName}`);
+  return scriptPath;
 }
 ipcMain.handle('browser-command', async (event, command) => {
   return new Promise((resolve, reject) => {
@@ -537,28 +704,19 @@ ipcMain.handle('ask-ollama', async (event, prompt) => {
   const win = BrowserWindow.getFocusedWindow();
 
   // Show loading message in renderer
-  win.webContents.send('display-message', '🧠 Thinking...', { voiceLang: 'en-IN' });
+  if (win) win.webContents.send('display-message', '🧠 Thinking...', { voiceLang: 'en-IN' });
 
   try {
-    const res = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llava',
-        prompt: prompt,
-        stream: false
-      })
+    const output = await aiConfig.chat({
+      messages: [{ role: "user", content: String(prompt ?? "") }],
+      stream: false,
     });
 
-    const json = await res.json();
-    const output = json.response || 'No response.';
-
-    // Show actual response now
-    win.webContents.send('display-message', output, { voiceLang: 'en-IN' });
+    if (win) win.webContents.send('display-message', output, { voiceLang: 'en-IN' });
 
   } catch (err) {
     console.error(err);
-    win.webContents.send('display-message', '⚠️ Error from Ollama.', { voiceLang: 'en-IN' });
+    if (win) win.webContents.send('display-message', `⚠️ AI error: ${err.message}`, { voiceLang: 'en-IN' });
   }
 });
 robot.setKeyboardDelay(50);
@@ -582,16 +740,8 @@ function typeSafe(text) {
 
 
 // =====================================================
-// PATH RESOLVER (WORKS IN DEV + PACKAGED .EXE)
+// PATH RESOLVER — see unified getPythonScript above
 // =====================================================
-function getPythonScript(scriptName) {
-  const basePath = app.isPackaged
-    ? path.join(process.resourcesPath, "res", "python")
-    : path.join(process.cwd(), "res", "python");
-  const scriptPath = path.join(basePath, scriptName);
-  console.log("[PYTHON PATH] →", scriptPath);
-  return scriptPath;
-}
 
 // =====================================================
 // PYTHON EXEC HELPERS
@@ -623,7 +773,7 @@ async function getCaretCoords() {
 // =====================================================
 ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
   try {
-    // 1️⃣ Ask LLaMA for app name
+    // 1️⃣ Ask the configured model for the app name
     const prompt = `
     You are AIRIS, a precise assistant for opening applications on Windows.
     The user provides a command like "open Chrome" or "launch VS Code".
@@ -637,14 +787,10 @@ ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
     User command: "${userInput}"
     `.trim();
 
-    const res = await axios.post("http://localhost:11434/api/generate", {
-      model: "llava",
-      prompt,
-      stream: false,
-    });
-
-    const aiResponse = res.data?.response?.trim() || "UNKNOWN_APP";
-    if (aiResponse === "UNKNOWN_APP") return "Could not determine app to launch.";
+    const aiResponse = (await aiConfig.generateText(prompt, { maxTokens: 24 }))?.trim() || "UNKNOWN_APP";
+    if (!aiResponse || aiResponse === "UNKNOWN_APP") {
+      return { type: "error", output: "Could not determine the app to launch." };
+    }
 
     exec(`start "" "${aiResponse}"`);
     console.log(`🚀 Launched: ${aiResponse}`);
@@ -675,14 +821,7 @@ ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
       Respond with the email only — no extra text.
       `.trim();
 
-
-      const emailRes = await axios.post("http://localhost:11434/api/generate", {
-        model: "llava",
-        prompt: emailPrompt,
-        stream: false,
-      });
-
-      const recipientEmail = emailRes.data?.response?.trim() || "UNKNOWN_EMAIL";
+      const recipientEmail = (await aiConfig.generateText(emailPrompt, { maxTokens: 40 }))?.trim() || "UNKNOWN_EMAIL";
       if (recipientEmail !== "UNKNOWN_EMAIL") {
         clipboard.writeText(recipientEmail);
         robot.keyTap('v', 'control');
@@ -691,66 +830,53 @@ ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
       }
 
       // 4️⃣ Generate subject
-const subjectPrompt = `
+      const subjectPrompt = `
 You are AIRIS, a precise AI assistant for email automation.
 Generate a concise subject line for the email.
 Input: "${userInput}"
 `.trim();
 
-const subjectRes = await axios.post("http://localhost:11434/api/generate", {
-  model: "llava",
-  prompt: subjectPrompt,
-  stream: false,
-});
+      const emailSubject = (await aiConfig.generateText(subjectPrompt, { maxTokens: 40 }))?.trim() || "UNKNOWN_SUBJECT";
 
-let subjectCoords;
-const emailSubject = subjectRes.data?.response?.trim() || "UNKNOWN_SUBJECT";
+      let subjectCoords;
+      if (emailSubject !== "UNKNOWN_SUBJECT") {
+        subjectCoords = await getCoords("get_subject_coords.py");
+        robot.moveMouse(subjectCoords.x, subjectCoords.y);
+        robot.mouseClick(); // focus subject field
+        clipboard.writeText(emailSubject);
+        robot.keyTap('v', 'control');
+        await new Promise(r => setTimeout(r, 200));
 
-if (emailSubject !== "UNKNOWN_SUBJECT") {
-  subjectCoords = await getCoords("get_subject_coords.py");
-  robot.moveMouse(subjectCoords.x, subjectCoords.y);
-  robot.mouseClick(); // focus subject field
-  clipboard.writeText(emailSubject);
-  robot.keyTap('v', 'control');
-  await new Promise(r => setTimeout(r, 200));
+        // ✅ Move slightly below to switch to body field
+        robot.moveMouseSmooth(subjectCoords.x, subjectCoords.y + 60); // ~60px below subject box
+        robot.mouseClick(); // focus body area
+        await new Promise(r => setTimeout(r, 200));
+      }
 
-  // ✅ Move slightly below to switch to body field
-  robot.moveMouseSmooth(subjectCoords.x, subjectCoords.y + 60); // ~60px below subject box
-  robot.mouseClick(); // focus body area
-  await new Promise(r => setTimeout(r, 200));
-}
-
-// 5️⃣ Generate body
-const bodyPrompt = `
+      // 5️⃣ Generate body
+      const bodyPrompt = `
 You are AIRIS, a precise AI assistant for email automation.
 From this user input, write the email body clearly and professionally.
 Input: "${userInput}"
 `.trim();
 
-const bodyRes = await axios.post("http://localhost:11434/api/generate", {
-  model: "llava",
-  prompt: bodyPrompt,
-  stream: false,
-});
+      const emailBody = (await aiConfig.generateText(bodyPrompt, { maxTokens: 500 }))?.trim() || "UNKNOWN_BODY";
+      if (emailBody !== "UNKNOWN_BODY") {
+        clipboard.writeText(emailBody);
+        robot.keyTap("v", "control");
+        await new Promise(r => setTimeout(r, 300));
+      }
 
-const emailBody = bodyRes.data?.response?.trim() || "UNKNOWN_BODY";
-if (emailBody !== "UNKNOWN_BODY") {
-  clipboard.writeText(emailBody);
-  robot.keyTap("v", "control");
-  await new Promise(r => setTimeout(r, 300));
-}
-
-// 6️⃣ Send email
-const sendCoords = await getCoords("get_send_coords.py");
-robot.moveMouse(sendCoords.x, sendCoords.y);
-robot.mouseClick();
-
+      // 6️⃣ Send email
+      const sendCoords = await getCoords("get_send_coords.py");
+      robot.moveMouse(sendCoords.x, sendCoords.y);
+      robot.mouseClick();
     }
 
-    return `AIRIS launched: ${aiResponse}`;
+    return { type: "app", output: `AIRIS launched: ${aiResponse}` };
   } catch (err) {
     console.error("AIRIS AI error:", err);
-    return "AIRIS encountered an error.";
+    return { type: "error", output: `AIRIS encountered an error: ${err.message}` };
   }
 });
 let finalOutput = '';
@@ -825,23 +951,14 @@ Now classify:
 User: "${text}"
 `.trim();
 
-    const res = await axios.post(OLLAMA_URL, {
-      model: "llava",
-      prompt,
-      stream: false
-    });
-
-    let rawResponse = res.data?.response?.trim() || '{"intent":"unknown"}';
+    const rawResponse = ((await aiConfig.generateText(prompt, { maxTokens: 60, temperature: 0.1 })) || '{"intent":"unknown"}').trim();
 
     // sanitize
-    if (!rawResponse.startsWith("{")) {
-      rawResponse = '{"intent":"unknown"}';
-    }
-
-    return rawResponse;
+    const safe = rawResponse.startsWith("{") ? rawResponse : '{"intent":"unknown"}';
+    return safe;
 
   } catch (err) {
-    console.error("AIRIS LLaVA intent classification error:", err.message);
+    console.error("AIRIS intent classification error:", err.message);
     return '{"intent":"unknown"}';
   }
 });
@@ -850,32 +967,32 @@ User: "${text}"
 // 💬 2️⃣ General chat responder
 ipcMain.handle('llava-chat', async (event, text) => {
   try {
-    const res = await axios.post(OLLAMA_URL, {
-      model: "llava",
-      prompt: text,
-      stream: false
+    const responseText = await aiConfig.chat({
+      messages: [{ role: "user", content: String(text ?? "") }],
+      stream: false,
     });
-
-    const responseText = res.data?.response?.trim() || "AIRIS had no reply.";
     return responseText;
 
   } catch (err) {
-    console.error("AIRIS LLaVA chat error:", err.message);
-    return "Error contacting AIRIS chat module.";
+    console.error("AIRIS chat error:", err.message);
+    return `AI chat error: ${err.message}`;
   }
 });
 // MAIN PROCESS (in Electron)
 ipcMain.on("settings-updated", (event, newSettings) => {
-  messageWindow.webContents.send("update-settings", newSettings);
+  const payload = newSettings && typeof newSettings === "object" ? newSettings : {};
+  if (messageWindow && !messageWindow.isDestroyed()) {
+    messageWindow.webContents.send("update-settings", payload);
+  }
 });
 
 ipcMain.handle('analyze-screen', async () => {
   try {
-    const userInput = await analyzeScreen(mainWindow);
+    const userInput = await analyzeScreen();
     const finalPrompt = `${systemInstructions}\n\nUser: ${userInput}\nAssistant:`;
     const response = await askAI(finalPrompt);
     showMessageWindow(response);
-    return roastText;
+    return response;
   } catch (err) {
     console.error("[❌ analyze-screen] Error:", err.message);
     showMessageWindow("⚠️ Couldn't analyze screen.");
@@ -905,7 +1022,8 @@ ipcMain.on('show-sentiment-message', (event, message) => {
   showMessageWindow(message); // This stays globally active, always listening
 });
 ipcMain.on('menuwin' , () => {
-  createMenuWindow();
+  // Legacy launcher menu is retired; AI Settings is the supported entry
+  // point. Keep this channel safe no-op so old messages don't crash.
 });
 ipcMain.on('run-automation', async () => {
   console.log("🤖 Starting automation sequence...");
@@ -1016,17 +1134,8 @@ function runPythonBridge(script, args) {
 }
 
 async function runAskAI(userInput) {
-  const ollama = "http://localhost:11434/api/generate";
-  const model = "llava"; // or your chosen model
-
-  const res = await fetch(ollama, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, prompt: userInput, stream: false }),
-  });
-
-  const json = await res.json();
-  return { type: "ai", output: json.response };
+  const output = await askAI(userInput);
+  return { type: "ai", output };
 }
 ipcMain.handle("ask-ai", async (_, userInput) => {
   try {
@@ -1046,11 +1155,17 @@ ipcMain.handle("ask-ai", async (_, userInput) => {
     }
 
     // === Fetch recent memory from Supabase ===
-    const { data: previousMemory, error: fetchError } = await supabase
-      .from("memories")
-      .select("input_text, response_text")
-      .order("id", { ascending: false })
-      .limit(5);
+    let previousMemory = null;
+    let fetchError = null;
+    if (supabase) {
+      const res = await supabase
+        .from("memories")
+        .select("input_text, response_text")
+        .order("id", { ascending: false })
+        .limit(5);
+      previousMemory = res.data;
+      fetchError = res.error;
+    }
 
     if (fetchError) console.error("❌ Supabase fetch error:", fetchError);
 
@@ -1081,14 +1196,16 @@ Assistant:
     console.log("💬 LLaVA Response:", response);
 
     // === Store interaction ===
-    const { error: insertError } = await supabase.from("memories").insert({
-      user_id: userName,
-      input_text: userInput,
-      response_text: response
-    });
+    if (supabase) {
+      const { error: insertError } = await supabase.from("memories").insert({
+        user_id: userName,
+        input_text: userInput,
+        response_text: response
+      });
 
-    if (insertError) console.error("❌ Supabase insert error:", insertError);
-    else console.log("☁️ Memory updated in Supabase");
+      if (insertError) console.error("❌ Supabase insert error:", insertError);
+      else console.log("☁️ Memory updated in Supabase");
+    }
 
     // === Optional sentiment analysis ===
     const sentimentData = await analyzeSentiment(userInput);
@@ -1130,7 +1247,7 @@ Assistant:
   }
 
   // Step 1: Generate code based on user request
-  const userRequest = message?.trim();
+  const userRequest = userInput?.trim();
   if (!userRequest) {
     showMessageWindow("⚠️ No request provided for code generation!");
     return response;
@@ -1203,14 +1320,14 @@ ipcMain.on('popup-choice', async (event, choice, userInput) => {
   closePopup();
 });
 ipcMain.on('memory-log', async (event, userInput) => {
+  if (!supabase) return;
   const Sentiment = require('sentiment');
-  const { supabase } = require('./supabaseClient');
   const sentiment = new Sentiment();
 
   const sentimentResult = sentiment.analyze(userInput);
   const mood = sentimentResult.score > 0 ? 'positive' :
                sentimentResult.score < 0 ? 'negative' : 'neutral';
- 
+  
   await supabase.from('memory_logs').insert({
     user_input: userInput,
     sentiment: mood,
@@ -1387,24 +1504,13 @@ async function handleYouTubeSummary() {
   }
 }
 
-// ─── Initialization ─────────────────s──────────────────────────────────────
+// ─── Initialization ───────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
-  tray = new Tray(path.join(__dirname, 'icon.png')); // use a 16x16 or 32x32 icon
-  const contextMenu = Menu.buildFromTemplate([
-      { label: 'Show App', click: () => mainWindow.show() },
-      { label: 'Quit', click: () => app.quit() }
-  ]);
   createSplash();
-  ipcMain.on("splash-finished", () => {
-    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
-    createMainWindow();
-  }); 
-  
-  // splashWindow.close();
-  tray.setToolTip('My App is running in background');
-  tray.setContextMenu(contextMenu);
-  console.log("✅ ollama pull llava");
+
+  ensureTray();
+  console.log("✅ Ensuring default AI model is available");
   exec('ollama pull llava');
   checkDependencies();
   // ipcMain.on("move-mouse", (event, coords) => {
@@ -1424,9 +1530,9 @@ app.whenReady().then(async () => {
     setInterval(async () => {
       if (Math.random() < 0.2) {
         console.log("[🧠] Attempting roast screen analysis...");
- 
+  
         try {
-          const screenSummary = await observeScreen();
+          const screenSummary = await analyzeScreen();
           const roast = await analyzeSentiment(screenSummary);
 
           if (roast?.trim()) {
@@ -1529,7 +1635,7 @@ app.whenReady().then(async () => {
           
               showMessageWindow("🔍 Analyzing code for possible errors...");
           
-              // 3️⃣ Ask AI for a short diagnostic
+              // 3️⃣ Ask the configured AI for a short diagnostic
               const diagnosticPrompt = `
               You are AIRIS — an expert code reviewer.
               In under 5 concise lines, describe the main issue(s) in this code snippet.
@@ -1538,13 +1644,7 @@ app.whenReady().then(async () => {
               ${highlightedCode}
               `.trim();
           
-              const diagRes = await axios.post("http://localhost:11434/api/generate", {
-                model: "llava",
-                prompt: diagnosticPrompt,
-                stream: false,
-              });
-          
-              const shortDiagnosis = diagRes.data?.response?.trim() || "No obvious issues found.";
+              const shortDiagnosis = ((await aiConfig.generateText(diagnosticPrompt, { maxTokens: 160 })) || "").trim() || "No obvious issues found.";
           
               showMessageWindow("⚠️ Code Issue Summary:\n" + shortDiagnosis);
           
@@ -1559,13 +1659,7 @@ app.whenReady().then(async () => {
               ${highlightedCode}
               `.trim();
           
-              const patchRes = await axios.post("http://localhost:11434/api/generate", {
-                model: "llava",
-                prompt: patchPrompt,
-                stream: false,
-              });
-          
-              const patchedCode = patchRes.data?.response?.trim();
+              const patchedCode = ((await aiConfig.generateText(patchPrompt, { maxTokens: 900 })) || "").trim();
               if (!patchedCode) {
                 showMessageWindow("⚠️ Could not generate a valid patch. The snippet may be incomplete.");
                 return;
@@ -1697,7 +1791,9 @@ app.whenReady().then(async () => {
             const screenDescription = await analyzeScreen(); // now from screenObserver.js
         
             if (screenDescription?.trim()) {
-              mainWindow.webContents.send("show-message", screenDescription.trim());
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send("show-message", screenDescription.trim());
+              }
               showMessageWindow(screenDescription.trim());
             }
           } catch (err) {
@@ -1727,8 +1823,8 @@ app.whenReady().then(async () => {
     app.commandLine.appendSwitch('enable-transparent-visuals');
     app.commandLine.appendSwitch('disable-gpu-compositing');
 
-    // Initial UI + app features
-    await createMainWindow();
+    // Background features. The main (eyes) window is created when the
+    // splash finishes — see createSplash()/ensureMainWindow().
     startAppWatcher();
   } catch (err) {
     console.error("❌ app.whenReady() failed:", err.message);

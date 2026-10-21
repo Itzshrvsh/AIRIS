@@ -9,6 +9,8 @@ include/
 Testfolder/
 AIRIS.exe/
 .vscode/
+__pycache__/
+*.pyc
 
 # secrets — never commit
 .env

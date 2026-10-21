@@ -498,12 +498,37 @@ async function testConnection(overrides = {}) {
       }
     }
     // method === "chat"
-    await chat({
-      messages: [{ role: "user", content: "Reply with the single word: ok" }],
-      maxTokens: 5,
-      stream: false,
-      timeoutMs: overrides.timeoutMs,
-    });
+    try {
+      await chat({
+        messages: [{ role: "user", content: "Reply with the single word: ok" }],
+        maxTokens: 5,
+        stream: false,
+        timeoutMs: overrides.timeoutMs,
+        config: overrides.config,
+      });
+      return {
+        ok: true,
+        state: "ok",
+        models: null,
+        message: "Connected — chat works, but model discovery is unavailable. Use manual model entry.",
+      };
+    } catch (err) {
+      // The server at least answered → still "connected"; auth/timeout are
+      // real failures and propagate.
+      if (
+        err instanceof ConfigError &&
+        (err.code === "http_error" || err.code === "bad_response_shape") &&
+        !(err.httpStatus === 401 || err.httpStatus === 403)
+      ) {
+        return {
+          ok: true,
+          state: "ok",
+          models: null,
+          message: `Server is reachable (probe returned HTTP ${err.httpStatus ?? "?"}), but model discovery is unavailable. Use manual model entry.`,
+        };
+      }
+      throw err;
+    }
     return {
       ok: true,
       state: "ok",
@@ -524,8 +549,10 @@ async function testConnection(overrides = {}) {
  *             it resolves the model from featureModels first.
  *  Returns the assistant text. onChunk is called per streamed token.
  */
-async function chat({ messages, model, stream = false, onChunk, temperature, maxTokens, timeoutMs, signal, feature } = {}) {
-  const config = getActiveConfig();
+async function chat({ messages, model, stream = false, onChunk, temperature, maxTokens, timeoutMs, signal, feature, config: configOverride } = {}) {
+  let config = configOverride && typeof configOverride === "object"
+    ? mergeWithDefaults({ ...getActiveConfig(), ...configOverride })
+    : getActiveConfig();
   const resolved = model || (feature ? resolveFeatureModel(feature, config) : config.model);
   if (!resolved || !String(resolved).trim()) {
     throw new ConfigError("No model selected. Open AI Settings and choose or type a model id.", {

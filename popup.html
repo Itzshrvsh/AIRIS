@@ -37,9 +37,12 @@
     transition: all 0.2s ease;
   }
   button:hover { background: #0af; }
+  button:focus-visible { outline: 2px solid #7fd7ff; outline-offset: 1px; }
+  button:disabled { opacity: 0.6; cursor: default; }
 
   #inputBox { display: none; margin-top: 8px; }
-  input { width: 100%; padding: 5px; border-radius: 5px; border: none; }
+  input { width: 100%; padding: 5px; border-radius: 5px; border: none; outline: none; }
+  input:focus-visible { outline: 2px solid #7fd7ff; }
 </style>
 </head>
 <body>
@@ -54,26 +57,44 @@
 <script>
 const { ipcRenderer } = require('electron');
 const body = document.body;
+const askBtn = document.getElementById('askAiBtn');
+const searchBtn = document.getElementById('aiSearchBtn');
+const sendBtn = document.getElementById('sendBtn');
+const queryInput = document.getElementById('userQuery');
+
+const buttons = [askBtn, searchBtn, sendBtn];
 
 // Trigger smooth fade-in on load
 window.addEventListener('DOMContentLoaded', () => {
   requestAnimationFrame(() => body.classList.add('show'));
 });
 
-document.getElementById('askAiBtn').addEventListener('click', () => {
+function busy() {
+  for (const b of buttons) b.disabled = true;
+  askBtn.textContent = '⏳ Working...';
+}
+
+askBtn.addEventListener('click', () => {
+  busy();
   ipcRenderer.send('popup-choice', 'ask-ai');
 });
 
-document.getElementById('aiSearchBtn').addEventListener('click', () => {
+searchBtn.addEventListener('click', () => {
   document.getElementById('inputBox').style.display = 'block';
-  document.getElementById('askAiBtn').style.display = 'none';
-  document.getElementById('aiSearchBtn').style.display = 'none';
-  document.getElementById('userQuery').focus();
+  askBtn.style.display = 'none';
+  searchBtn.style.display = 'none';
+  queryInput.focus();
 });
 
-document.getElementById('sendBtn').addEventListener('click', () => {
-  const query = document.getElementById('userQuery').value.trim();
-  if (query) ipcRenderer.send('popup-choice', 'ai-search', query);
+sendBtn.addEventListener('click', () => {
+  const query = queryInput.value.trim();
+  if (!query) return;
+  busy();
+  ipcRenderer.send('popup-choice', 'ai-search', query);
+});
+
+queryInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendBtn.click();
 });
 </script>
 </body>

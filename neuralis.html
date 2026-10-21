@@ -156,21 +156,25 @@
   
     askButton.addEventListener("click", async () => {
       const text = inputBox.value.trim();
-      if (!text) return alert("Type or say something first!");
+      if (!text) return (statusText.textContent = "Type or say something first!");
 
+      askButton.disabled = true;
+      micButton.disabled = true;
       try {
         statusText.textContent = "🧠 Processing...";
         
         const result = await ipcRenderer.invoke("Neuralis-ai", text);
 
-        if (result?.type === "automation") {
-          statusText.textContent = "✅ Browser automation done.";
-        } else if (result?.type === "ai") {
-          ipcRenderer.send("show-sentiment-message", result.response);
-          statusText.textContent = "✅ Response received.";
-        } else {
-          statusText.textContent = "⚠️ Unknown response.";
+        if (result && typeof result === "object" && result.type === "error") {
+          statusText.textContent = "⚠️ " + (result.output || "Unknown error.");
+          askButton.disabled = false;
+          micButton.disabled = false;
+          return; // keep the panel open on errors
         }
+
+        const responseText = result && typeof result === "object" ? result.output : String(result ?? "");
+        ipcRenderer.send("show-sentiment-message", responseText);
+        statusText.textContent = "✅ Response received.";
 
         // 🔻 Automatically close the panel after 1 second
         setTimeout(() => {
@@ -181,6 +185,8 @@
         console.error(err);
         statusText.textContent = "❌ Error executing command.";
         inputBox.value += `\n\n⚠️ Error: ${err.message || err}`;
+        askButton.disabled = false;
+        micButton.disabled = false;
       }
     });
 
@@ -216,6 +222,7 @@
     // Mic toggle
     micButton.addEventListener('click', async () => {
       try {
+        micButton.disabled = true;
         if (!isRecording) {
           isRecording = true;
           micButton.textContent = "🛑 Stop";
@@ -232,6 +239,8 @@
         statusText.textContent = "❌ Error: " + (err.message || err);
         micButton.textContent = "🎙️ Speak";
         isRecording = false;
+      } finally {
+        micButton.disabled = false;
       }
     });
 

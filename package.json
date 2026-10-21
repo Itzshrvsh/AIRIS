@@ -8,7 +8,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test/run-tests.js",
     "start": "electron .",
     "dev": "electronmon .",
     "pack": "electron-builder --dir",

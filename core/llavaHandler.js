@@ -1,21 +1,15 @@
-import { analyzeAndStore, fetchMemoryContext } from './memoryManager.js';
-import { exec } from 'child_process';
+// core/llavaHandler.js — memory-aware chat entry point (CommonJS).
+//
+// Runs through the central AI configuration (js-files/aiConfig.js) instead
+// of spawning the `ollama` CLI with a hard-coded model.
+const { analyzeAndStore, fetchMemoryContext } = require('./memoryManager');
+const { generateText } = require('../js-files/aiConfig');
 
-function runLLaVA(prompt) {
-  return new Promise((resolve) => {
-    let output = '';
-    const cmd = `ollama run llava "${prompt.replace(/"/g, '\\"')}"`;
-    const proc = exec(cmd);
-    proc.stdout.on('data', (chunk) => (output += chunk));
-    proc.on('close', () => resolve(output.trim()));
-  });
-}
-
-export async function askAIRIS(userId, userInput) {
+async function askAIRIS(userId, userInput) {
   // 1. Retrieve memory context
   const memoryContext = await fetchMemoryContext(userId, userInput);
 
-  // 2. Inject it into prompt
+  // 2. Inject it into the prompt
   const fullPrompt = `
 [User's previous context]
 - ${memoryContext}
@@ -26,12 +20,18 @@ ${userInput}
 Respond naturally and consider their mood and memory.
 `;
 
-  // 3. Ask LLaVA
-  const response = await runLLaVA(fullPrompt);
+  // 3. Ask the configured model
+  const response = await generateText(fullPrompt, { maxTokens: 600 });
 
-  // 4. Store new memory
-  await analyzeAndStore(userId, userInput);
-  await analyzeAndStore(userId, response); // optional — so LLaVA remembers what it said
+  // 4. Store new memory (best-effort; Supabase may be disabled)
+  try {
+    await analyzeAndStore(userId, userInput);
+    await analyzeAndStore(userId, response);
+  } catch (err) {
+    console.warn('core/llavaHandler: memory store skipped:', err.message);
+  }
 
   return response;
 }
+
+module.exports = { askAIRIS };

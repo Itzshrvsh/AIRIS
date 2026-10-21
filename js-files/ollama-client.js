@@ -1,7 +1,21 @@
+// js-files/ollama-client.js — LEGACY spawn-based Ollama helper.
+// Historically ran the `ollama run llava` CLI. It now defers the model id
+// to the central AI configuration (data/ai-config.json, see
+// js-files/aiConfig.js) so the CLI always matches what AI Settings shows.
+// Note: this CLI path only works while the configured provider is a local
+// Ollama install; other providers should use the standard client (aiConfig.chat).
 const { spawn } = require('child_process');
+const { readConfig } = require('./aiConfig');
 
 function askOllama(prompt, callback) {
-  const ollama = spawn('ollama', ['run', 'llava']); // change model as needed
+  let model;
+  try {
+    model = readConfig().model;
+  } catch {
+    model = undefined; // config unreadable → let the CLI default decide
+  }
+
+  const ollama = model && String(model).trim() ? spawn('ollama', ['run', String(model).trim()]) : spawn('ollama', ['run']);
 
   let response = '';
   ollama.stdout.on('data', (data) => response += data.toString());

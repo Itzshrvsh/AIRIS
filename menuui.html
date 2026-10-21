@@ -73,6 +73,7 @@ html, body {
   user-select: none;
   margin-bottom: 6px;
   transition: background 0.2s, transform 0.2s;
+  outline: none;
 }
 .drawer-item:last-child { margin-bottom: 0; }
 
@@ -80,11 +81,27 @@ html, body {
   background: rgba(3,169,244,0.9);
   transform: translateX(4px);
 }
+.drawer-item:focus-visible {
+  background: rgba(3,169,244,0.75);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.7);
+}
+.drawer-item:active {
+  background: rgba(2,136,209,0.95);
+}
+
+/* Highlight the settings entry as a distinct action */
+.drawer-item.settings-item {
+  background: rgba(255,255,255,0.14);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.drawer-item.settings-item:hover { background: rgba(3,169,244,0.95); }
 </style>
 </head>
 <body>
-  <div id="trigger">🧠 Start</div>
-  <div id="drawer"></div>
+  <div id="trigger" role="button" tabindex="0" aria-expanded="false" aria-controls="drawer">🧠 Start</div>
+  <div id="drawer" role="menu" aria-label="AIRIS actions"></div>
 
 <script>
 const { ipcRenderer } = require('electron');
@@ -98,7 +115,8 @@ const actions = [
   { name: 'Terminal', action: 'terminal' },
   { name: 'Screen Capture', action: 'screenCapture' },
   { name: 'YouTube Summary', action: 'ytSummary' },
-  { name: 'NEURALIS', action: 'neuralis' }
+  { name: 'NEURALIS', action: 'neuralis' },
+  { name: '⚙️ AI Settings', action: 'aiSettings', settings: true }
 ];
 
 // Build drawer items
@@ -107,11 +125,26 @@ function buildDrawer() {
   actions.forEach(act => {
     const item = document.createElement('div');
     item.classList.add('drawer-item');
+    if (act.settings) item.classList.add('settings-item');
     item.textContent = act.name;
-    item.addEventListener('click', () => {
-      ipcRenderer.send('menu-action', act.action);
-      // Only hide drawer for non-chatbot actions
-      if (act.action !== 'chatbot') hideDrawer();
+    item.setAttribute('role', 'menuitem');
+    item.setAttribute('tabindex', '0');
+    const activate = () => {
+      if (act.settings) {
+        ipcRenderer.send('open-ai-settings');
+      } else {
+        ipcRenderer.send('menu-action', act.action);
+        // Only hide drawer for non-chatbot actions
+        if (act.action !== 'chatbot') hideDrawer();
+        else hideDrawer(); // chatbot keeps the input window open, drawer still hides
+      }
+    };
+    item.addEventListener('click', activate);
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
+      }
     });
     drawer.appendChild(item);
   });
@@ -121,6 +154,7 @@ buildDrawer();
 // Drawer animations
 function showDrawer() {
   drawer.style.display = 'flex';
+  trigger.setAttribute('aria-expanded', 'true');
   setTimeout(() => {
     drawer.style.opacity = '1';
     drawer.style.transform = 'translateY(0)';
@@ -130,8 +164,18 @@ function showDrawer() {
 function hideDrawer() {
   drawer.style.opacity = '0';
   drawer.style.transform = 'translateY(10px)';
+  trigger.setAttribute('aria-expanded', 'false');
   setTimeout(() => { drawer.style.display = 'none'; }, 250);
 }
+
+// Keyboard: open the drawer via Enter/Space on the trigger
+trigger.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (drawer.style.display === 'none' || !drawer.style.display) showDrawer();
+    else hideDrawer();
+  }
+});
 
 // Hover behavior
 let hoverTimeout;

@@ -129,7 +129,6 @@
     <div id="output"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
     const panel = document.getElementById("panel");
     const inputBox = document.getElementById("inputBox");
@@ -151,6 +150,7 @@
       if (!userText) return;
       appendOutput("> " + userText + "\n");
       inputBox.value = "";
+      askButton.disabled = true;
 
       const loader = document.createElement("div");
       loader.classList.add("loader");
@@ -171,21 +171,35 @@ Instruction: ${userText}
       `;
 
       try {
-        const res = await axios.post("http://localhost:11434/api/generate", {
-          model: "llava",
-          prompt: prompt,
-          stream: false
+        // AI goes through the main process / central AI configuration —
+        // no renderer-side endpoint or model hard-coding, works offline-safe.
+        const result = await window.electronAPI.aiConfig.chat({
+          messages: [{ role: "user", content: prompt }],
+          maxTokens: 200,
         });
 
         loader.remove();
 
-        const aiCommand = res.data?.response?.trim() || "🤖 No response from AI";
+        if (!result.ok) {
+          appendOutput("🔥 AI error: " + result.error + "\n");
+          return;
+        }
+
+        const aiCommand = (result.text || "").trim() || "🤖 No response from AI";
         appendOutput(aiCommand + "\n");
+
+        if (aiCommand.includes("Unable to generate command")) {
+          appendOutput("⚠️ Command not executed.\n");
+          return;
+        }
+
         runCommand(aiCommand);
 
       } catch (err) {
         loader.remove();
         appendOutput("🔥 AIRIS crashed: " + (err.message || err) + "\n");
+      } finally {
+        askButton.disabled = false;
       }
     }
 

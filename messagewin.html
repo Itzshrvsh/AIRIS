@@ -113,8 +113,11 @@
     const { ipcRenderer, clipboard } = require('electron');
     const box = document.getElementById('message-box');
     const textEl = document.getElementById('message-text');
+    const progressFill = document.getElementById('progress-fill');
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  
+
+    let flowId = 0; // generation counter — only the newest message may close
+
     function adjustHeight() {
       // Let it grow naturally up to 80% of screen height
       box.style.height = "auto";
@@ -127,20 +130,32 @@
         box.style.overflowY = "visible";
       }
     }
-  
+
+    function restartProgress() {
+      // Restart the shrinking bar for the freshest message
+      const p = progressFill;
+      p.style.animation = 'none';
+      void p.offsetWidth; // reflow to restart keyframes
+      p.style.animation = '';
+    }
+
     async function displayMessageFlow(msg) {
+      const myFlow = ++flowId;
       textEl.textContent = msg;
       adjustHeight();
+      restartProgress();
   
+      box.classList.remove('closing');
       box.classList.add('show');
-      box.focus();
   
       clipboard.writeText(msg);
   
       await sleep(8000);
+      if (myFlow !== flowId) return; // a newer message took over — stay open
       box.classList.remove('show');
       box.classList.add('closing');
       await sleep(1000);
+      if (myFlow !== flowId) return;
       window.close();
     }
   
@@ -152,6 +167,7 @@
       if (e.key === 'Escape') {
         box.classList.remove('show');
         box.classList.add('closing');
+        setTimeout(() => window.close(), 600);
       }
     });
   </script>

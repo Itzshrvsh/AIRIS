@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AIRIS — AI Settings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: rgba(20, 30, 48, 0.85);
+    --panel-solid: #111a2c;
+    --border: rgba(140, 170, 220, 0.18);
+    --text: #e8f0fb;
+    --muted: #9db1cc;
+    --accent: #06b6d4;
+    --accent-hover: #22d3ee;
+    --ok: #34d399;
+    --err: #f87171;
+    --warn: #fbbf24;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+  }
+
+  /* window chrome */
+  #titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(30, 43, 66, 0.65), rgba(15, 22, 38, 0.9));
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  #titlebar .title { font-weight: 600; letter-spacing: 0.3px; display: flex; gap: 8px; align-items: center; }
+  #titlebar .title .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  #titlebar button {
+    -webkit-app-region: no-drag;
+    width: 30px; height: 26px;
+    border: none; border-radius: 6px;
+    background: rgba(255,255,255,0.07);
+    color: var(--text); cursor: pointer; font-size: 13px;
+  }
+  #titlebar button:hover { background: var(--err); color: #fff; }
+
+  #scroller {
+    height: calc(100% - 90px);
+    overflow-y: auto;
+    padding: 18px 18px 26px;
+  }
+  #scroller::-webkit-scrollbar { width: 10px; }
+  #scroller::-webkit-scrollbar-thumb { background: rgba(140,170,220,0.25); border-radius: 8px; }
+  #scroller::-webkit-scrollbar-track { background: transparent; }
+
+  h1 { font-size: 18px; margin: 4px 0 14px; font-weight: 600; }
+  .subtitle { color: var(--muted); margin: -8px 0 18px; font-size: 12.5px; line-height: 1.45; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(8px);
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.1px;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600;
+  }
+
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 5px; }
+  label:first-child { margin-top: 0; }
+
+  input[type="text"], input[type="password"], select {
+    width: 100%;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(8, 12, 22, 0.75);
+    color: var(--text);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus-visible, select:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.35);
+  }
+  input::placeholder { color: rgba(157,177,204,0.55); }
+
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row > * { flex: 1 1 auto; }
+  .row .btn { flex: 0 0 auto; }
+
+  .keywrap { position: relative; }
+  .keywrap input { padding-right: 66px; }
+  .keywrap .btn { position: absolute; right: 4px; top: 3px; bottom: 3px; padding: 0 10px; }
+
+  .btn {
+    padding: 9px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s, transform .1s, box-shadow .15s;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { background: rgba(255,255,255,0.15); }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+
+  .btn.primary {
+    background: linear-gradient(135deg, #0891b2, #06b6d4);
+    border-color: rgba(255,255,255,0.25);
+    font-weight: 600;
+  }
+  .btn.primary:hover:not(:disabled) { background: linear-gradient(135deg, #06b6d4, #22d3ee); color: #06222a; }
+
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+
+  #statusLine {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12.5px; line-height: 1.45;
+    border: 1px solid transparent;
+    min-height: 20px;
+    word-break: break-word;
+  }
+  #statusLine.ok { border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.08); color: var(--ok); }
+  #statusLine.err { border-color: rgba(248, 113, 113, 0.45); background: rgba(248, 113, 113, 0.08); color: var(--err); }
+  #statusLine.pend { border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.08); color: var(--warn); }
+  #statusLine.muted { color: var(--muted); background: rgba(255,255,255,0.04); border-color: var(--border); }
+
+  .spinner {
+    width: 13px; height: 13px; flex: none;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  #statusLine.busy .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  details summary {
+    cursor: pointer; color: var(--muted); font-size: 12.5px;
+    padding: 6px 0; user-select: none;
+  }
+  details summary:hover { color: var(--text); }
+
+  .actions {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex; gap: 10px; justify-content: flex-end; align-items: center;
+    padding: 12px 18px;
+    background: linear-gradient(180deg, rgba(11,18,32,0.6), rgba(9,14,24,0.95));
+    border-top: 1px solid var(--border);
+  }
+  .actions .spacer { flex: 1 1 auto; color: var(--muted); font-size: 12px; }
+
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .pill.ok { color: var(--ok); border-color: rgba(52,211,153,.5); }
+  .pill.err { color: var(--err); border-color: rgba(248,113,113,.5); }
+</style>
+</head>
+<body>
+  <div id="titlebar">
+    <div class="title"><span class="dot"></span>AIRIS — AI Settings</div>
+    <button id="closeBtn" title="Close" aria-label="Close settings">✕</button>
+  </div>
+
+  <div id="scroller">
+    <h1>One AI configuration for every feature</h1>
+    <p class="subtitle">
+      Chat, code patching, screen vision, YouTube summaries, memory utilities and the terminal
+      all use <strong>these</strong> values. Changes apply app-wide without restarting (renderers
+      listen for updates) and are saved to <code>data/ai-config.json</code>.
+    </p>
+
+    <div class="card">
+      <h2>Provider &amp; endpoint</h2>
+
+      <label for="providerSelect">Provider / API preset</label>
+      <select id="providerSelect" aria-describedby="presetHint"></select>
+      <div id="presetHint" class="hint">Presets only fill the base URL below — you can always edit it. Any OpenAI-compatible <code>/v1</code> endpoint works.</div>
+
+      <label for="baseURL">API base URL (OpenAI-compatible, usually ending in <code>/v1</code>)</label>
+      <div class="row">
+        <input id="baseURL" type="text" spellcheck="false" placeholder="http://localhost:11434/v1" />
+      </div>
+      <div class="hint">Examples: <code>http://localhost:1234/v1</code> (LM Studio), <code>http://127.0.0.1:8080/v1</code> (llama.cpp), a hosted compatible endpoint. Duplicate <code>/v1</code> segments are cleaned automatically.</div>
+
+      <label for="apiKey">API key / token (optional for local servers)</label>
+      <div class="keywrap">
+        <input id="apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="sk-… (leave empty for local Ollama/LM Studio)" />
+        <button id="revealKey" class="btn" type="button" aria-label="Show or hide the API key">👁</button>
+      </div>
+      <div class="hint">Stored locally only (never printed to logs or sent anywhere except your provider as a Bearer header).</div>
+    </div>
+
+    <div class="card">
+      <h2>Model</h2>
+
+      <div class="row" style="gap:8px">
+        <button id="testBtn" class="btn" type="button">🔌 Test Connection</button>
+        <button id="refreshBtn" class="btn" type="button">↻ Refresh Models</button>
+        <span id="connPill" class="pill">unknown</span>
+      </div>
+
+      <div id="statusLine" class="muted" role="status" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="statusMsg">Fill in the endpoint above, then test the connection.</span>
+      </div>
+
+      <label for="modelSelect">Model (from the endpoint)</label>
+      <div class="row">
+        <select id="modelSelect"><option value="">— refresh models to populate —</option></select>
+      </div>
+
+      <label for="modelManual">Or type a model ID manually (fallback when discovery is unavailable)</label>
+      <div class="row">
+        <input id="modelManual" type="text" spellcheck="false" placeholder="e.g. llava:13b / qwen2.5-7b-instruct" />
+        <button id="useManualBtn" class="btn" type="button">Use this ID</button>
+      </div>
+      <div class="hint">
+        Chat is sent to <code>{base URL}/chat/completions</code>; discovery uses <code>{base URL}/models</code>.
+        Note: some servers (LM Studio, llama.cpp) load a model on the first request — the first message may take a while.
+        For Ollama, the id must exist locally (e.g. <code>ollama pull llava</code>).
+      </div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Advanced — specialised models (optional, inherit the main model when empty)</summary>
+        <label for="visionModel">Vision / screen analysis model (needs image support)</label>
+        <input id="visionModel" type="text" spellcheck="false" placeholder="inherits main model when empty" />
+        <label for="summarizerModel">YouTube summarizer model</label>
+        <input id="summarizerModel" type="text" spellcheck="false" placeholder="inherits main model when empty" />
+        <label for="fastModel">Fast utility model (short tasks: intents, classification)</label>
+        <input id="fastModel" type="text" spellcheck="false" placeholder="inherits main model when empty" />
+        <label for="transcriptionModel">Audio transcription model (whisper-style)</label>
+        <input id="transcriptionModel" type="text" spellcheck="false" placeholder="whisper" />
+        <div class="hint">These are explicit overrides for features that need a special capability. Leave blank to use the main model everywhere.</div>
+      </details>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>More request options</summary>
+        <label for="temperature">Temperature (leave empty for the server default)</label>
+        <input id="temperature" type="text" inputmode="decimal" placeholder="e.g. 0.7" />
+        <label for="maxTokens">Max tokens per request</label>
+        <input id="maxTokens" type="text" inputmode="numeric" placeholder="server default when empty" />
+        <label for="timeoutSecs">Timeout (seconds)</label>
+        <input id="timeoutSecs" type="text" inputmode="numeric" placeholder="120" />
+      </details>
+    </div>
+  </div>
+
+  <div class="actions">
+    <span class="spacer" id="savedHint"></span>
+    <button id="saveBtn" class="btn primary" type="button">💾 Save Settings</button>
+  </div>
+
+<script>
+  // Settings UI — talks only to the local main process via electronAPI; the
+  // API key is echoed between these local processes and never logged.
+  const api = () => window.electronAPI && window.electronAPI.aiConfig;
+  let config = null;
+  let presets = [];
+  let discoveredModels = [];
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    close: $('closeBtn'), provider: $('providerSelect'), baseURL: $('baseURL'),
+    apiKey: $('apiKey'), revealKey: $('revealKey'), testBtn: $('testBtn'),
+    refreshBtn: $('refreshBtn'), status: $('statusLine'), statusMsg: $('statusMsg'),
+    pill: $('connPill'), modelSelect: $('modelSelect'), modelManual: $('modelManual'),
+    useManual: $('useManualBtn'), save: $('saveBtn'), savedHint: $('savedHint'),
+    vision: $('visionModel'), summarizer: $('summarizerModel'), fast: $('fastModel'),
+    transcription: $('transcriptionModel'), temperature: $('temperature'),
+    maxTokens: $('maxTokens'), timeoutSecs: $('timeoutSecs'),
+  };
+
+  function setStatus(kind, text) {
+    els.status.className = kind; // ok | err | pend | muted
+    els.statusMsg.textContent = text;
+  }
+  function setPill(state) {
+    els.pill.className = state === 'ok' ? 'pill ok' : state === 'err' ? 'pill err' : 'pill';
+    els.pill.textContent = state === 'ok' ? 'connected' : state === 'err' ? 'error' : 'unknown';
+  }
+  function busy(flag) {
+    els.testBtn.disabled = flag;
+    els.refreshBtn.disabled = flag;
+    els.save.disabled = flag;
+    els.status.classList.toggle('busy', flag);
+  }
+
+  function fillPresets(list) {
+    els.provider.innerHTML = '';
+    for (const p of list) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.label;
+      els.provider.appendChild(opt);
+    }
+  }
+
+  function currentProviderId() {
+    const effective = (els.baseURL.value || '').trim();
+    const preset = presets.find((p) => p.baseURL && p.baseURL === effective);
+    return preset ? preset.id : 'custom';
+  }
+
+  function fillModelSelect(models, selected) {
+    els.modelSelect.innerHTML = '';
+    if (!models || !models.length) {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = '— no models from discovery —';
+      els.modelSelect.appendChild(o);
+      return;
+    }
+    for (const id of models) {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = id;
+      els.modelSelect.appendChild(o);
+    }
+    if (selected && models.includes(selected)) els.modelSelect.value = selected;
+  }
+
+  function render(cfg) {
+    config = cfg;
+    presets = cfg.presets || [];
+    fillPresets(presets);
+    els.baseURL.value = cfg.baseURL || '';
+    els.apiKey.value = cfg.apiKey || '';
+    els.provider.value = currentProviderId();
+    els.modelManual.value = cfg.model || '';
+    els.vision.value = (cfg.featureModels && cfg.featureModels.vision) || '';
+    els.summarizer.value = (cfg.featureModels && cfg.featureModels.summarizer) || '';
+    els.fast.value = (cfg.featureModels && cfg.featureModels.fast) || '';
+    els.transcription.value = (cfg.featureModels && cfg.featureModels.transcription) || '';
+    els.temperature.value = cfg.temperature ?? '';
+    els.maxTokens.value = cfg.maxTokens ?? '';
+    els.timeoutSecs.value = cfg.timeoutMs ? Math.round(cfg.timeoutMs / 1000) : '';
+    const st = cfg.status || {};
+    if (st.state === 'ok') { setPill('ok'); setStatus('ok', st.message || 'Connected.'); }
+    else if (st.state === 'error') { setPill('err'); setStatus('err', st.message || 'Previous check failed.'); }
+    fillModelSelect([], cfg.model);
+  }
+
+  function workingConfig() {
+    // Snapshot of the form for Test/Refresh so unsaved edits are honoured.
+    return {
+      baseURL: els.baseURL.value.trim(),
+      apiKey: els.apiKey.value,
+      model: els.modelSelect.value || els.modelManual.value.trim(),
+      timeoutMs: Number(els.timeoutSecs.value) > 0 ? Number(els.timeoutSecs.value) * 1000 : undefined,
+    };
+  }
+
+  els.provider.addEventListener('change', () => {
+    const p = presets.find((x) => x.id === els.provider.value);
+    if (p && p.baseURL) els.baseURL.value = p.baseURL;
+  });
+
+  els.revealKey.addEventListener('click', () => {
+    els.apiKey.type = els.apiKey.type === 'password' ? 'text' : 'password';
+  });
+
+  els.close.addEventListener('click', () => window.close());
+
+  els.testBtn.addEventListener('click', async () => {
+    busy(true);
+    setStatus('pend', 'Testing connection…');
+    try {
+      const result = await api().test(workingConfig());
+      if (result.ok) {
+        setPill('ok');
+        setStatus('ok', result.message || 'Connected.');
+      } else {
+        setPill('err');
+        setStatus('err', result.error || 'Connection failed.');
+      }
+    } catch (err) {
+      setPill('err');
+      setStatus('err', 'Test failed: ' + (err.message || err));
+    } finally {
+      busy(false);
+    }
+  });
+
+  els.refreshBtn.addEventListener('click', async () => {
+    busy(true);
+    setStatus('pend', 'Requesting model list…');
+    try {
+      const res = await api().models(workingConfig());
+      if (res.ok && Array.isArray(res.models) && res.models.length) {
+        discoveredModels = res.models;
+        const current = els.modelSelect.value || els.modelManual.value.trim();
+        if (current && !discoveredModels.includes(current)) discoveredModels.push(current);
+        fillModelSelect(discoveredModels, current);
+        setStatus('ok', `Found ${res.models.length} model${res.models.length === 1 ? '' : 's'} on the server.`);
+        setPill('ok');
+      } else if (res.ok) {
+        setStatus('err', 'The endpoint returned no models. Use manual model entry below.');
+      } else {
+        setStatus('err', `Model discovery failed: ${res.error}. You can still type a model ID manually.`);
+        if (res.code === 'auth') setPill('err'); else setPill('err');
+      }
+    } catch (err) {
+      setStatus('err', 'Refresh failed: ' + (err.message || err));
+    } finally {
+      busy(false);
+    }
+  });
+
+  els.useManual.addEventListener('click', () => {
+    const id = els.modelManual.value.trim();
+    if (!id) { setStatus('muted', 'Type a model ID first.'); return; }
+    els.modelSelect.innerHTML = '';
+    const o = document.createElement('option');
+    o.value = id; o.textContent = id + ' (manual)';
+    els.modelSelect.appendChild(o);
+    els.modelSelect.value = id;
+    setStatus('muted', `Selected "${id}". Save to apply.`);
+  });
+
+  els.modelSelect.addEventListener('change', () => {
+    if (els.modelSelect.value) els.modelManual.value = els.modelSelect.value;
+  });
+
+  els.save.addEventListener('click', async () => {
+    const baseURL = els.baseURL.value.trim();
+    const model = (els.modelSelect.value || els.modelManual.value.trim() || '').trim();
+    const tempRaw = els.temperature.value.trim();
+    const maxRaw = els.maxTokens.value.trim();
+    const timeoutRaw = els.timeoutSecs.value.trim();
+
+    if (!baseURL) { setStatus('err', 'API base URL is required.'); return; }
+    if (!model) {
+      setStatus('err', 'No model selected. Refresh the list or type a model ID, then Save.');
+      return;
+    }
+
+    busy(true);
+    try {
+      const payload = {
+        provider: els.provider.value,
+        baseURL,
+        apiKey: els.apiKey.value,
+        model,
+        featureModels: {
+          vision: els.vision.value.trim(),
+          summarizer: els.summarizer.value.trim(),
+          fast: els.fast.value.trim(),
+          transcription: els.transcription.value.trim(),
+        },
+        temperature: tempRaw === '' ? null : Number(tempRaw),
+        maxTokens: maxRaw === '' ? null : Number(maxRaw),
+      };
+      if (Number(timeoutRaw) > 0) payload.timeoutMs = Number(timeoutRaw) * 1000;
+      const result = await api().set(payload);
+      if (result.ok) {
+        els.savedHint.textContent = 'Saved at ' + new Date().toLocaleTimeString();
+        setStatus('ok', 'Configuration saved. All AIRIS features now use it.');
+      } else {
+        setStatus('err', 'Could not save: ' + (result.error || 'unknown error'));
+      }
+    } catch (err) {
+      setStatus('err', 'Could not save: ' + (err.message || err));
+    } finally {
+      busy(false);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close(); });
+
+  (async function init() {
+    if (!api()) {
+      setStatus('err', 'electronAPI missing — this window must run inside AIRIS.');
+      return;
+    }
+    try {
+      const cfg = await api().get();
+      render(cfg);
+      api().onChanged((fresh) => render(fresh));
+    } catch (err) {
+      setStatus('err', 'Could not load configuration: ' + (err.message || err));
+    }
+  })();
+
+  // Fill the model select from a persisted model list, if any
+  window.addEventListener('load', async () => {
+    try {
+      const res = await api().models(workingConfig());
+      if (res.ok && res.models && res.models.length) {
+        discoveredModels = res.models;
+        fillModelSelect(discoveredModels, els.modelManual.value.trim());
+        setStatus('ok', 'Model list loaded.');
+        setPill('ok');
+      }
+    } catch { /* silent: user can refresh explicitly */ }
+  });
+</script>
+</body>
+</html>

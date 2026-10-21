@@ -1,7 +1,7 @@
 const { exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const ollama = require("ollama"); // make sure you have this imported
+const { generateText } = require("../js-files/aiConfig"); // central AI config
 
 async function summarizeYouTubeVideo(videoUrl) {
   try {
@@ -57,19 +57,19 @@ async function summarizeYouTubeVideo(videoUrl) {
 
     if (!fs.existsSync(txtPath)) throw new Error("Transcription file missing");
 
-    // --- Step 4: Summarize using your local model ---
+    // --- Step 4: Summarize using the centrally configured model ---
     console.log("🪄 Summarizing transcription...");
     const text = fs.readFileSync(txtPath, "utf-8");
 
-    const summary = await ollama.generate({
-      model: "llava",
-      prompt: `Summarize the following YouTube transcript clearly and concisely:\n\n${text}`,
-    });
+    const summary = await generateText(
+      `Summarize the following YouTube transcript clearly and concisely:\n\n${text.slice(0, 8000)}`,
+      { feature: "summarizer", maxTokens: 500 }
+    );
 
-    fs.writeFileSync(summaryPath, summary.response, "utf-8");
+    fs.writeFileSync(summaryPath, summary, "utf-8");
     console.log("✅ Summary saved:", summaryPath);
 
-    return summary.response;
+    return summary;
   } catch (err) {
     console.error("⚠️ Error in summarizeYouTubeVideo:", err);
     return "Error: " + err.message;

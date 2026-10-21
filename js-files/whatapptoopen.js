@@ -1,5 +1,5 @@
 const fs = require('fs');
-const axios = require('axios');
+const { generateText } = require('./aiConfig');
 
 async function whatapptoopen(userInput) {
   // --- Prompt to generate a one-sentence context ---
@@ -11,17 +11,15 @@ User Input: "${userInput}"
 `;
 
 
-  // --- Send to local LLaMA API ---
-  const res = await axios.post("http://localhost:11434/api/generate", {
-    model: "llava",
-    prompt,
-    stream: false
-  });
-
-  const summary = res.data.response.trim();
+  // --- Send request via the central AI configuration ---
+  const summary = (await generateText(prompt, { maxTokens: 16 }) || "").trim();
 
   // --- Optionally log it ---
-  fs.appendFileSync("user_summary_log.txt", `Input: ${userInput}\nSummary: ${summary}\n\n`);
+  try {
+    fs.appendFileSync("user_summary_log.txt", `Input: ${userInput}\nSummary: ${summary}\n\n`);
+  } catch {
+    /* logging is best-effort */
+  }
 
   return summary;
 }

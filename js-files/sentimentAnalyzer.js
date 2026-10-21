@@ -1,5 +1,5 @@
 const fs = require('fs');
-const axios = require('axios');
+const { generateText, ConfigError } = require('./aiConfig');
 
 async function analyzeSentiment(userInput) {
   // --- Prompt to generate a one-sentence context ---
@@ -12,17 +12,23 @@ note the tone (positive, negative, neutral) if relevant.
 User Input: "${userInput}"
 `;
 
-  // --- Send to local LLaMA API ---
-  const res = await axios.post("http://localhost:11434/api/generate", {
-    model: "llava",
-    prompt,
-    stream: false
-  });
+  // --- Central AI configuration (provider/base URL/key/model from AI Settings) ---
+  let summary;
+  try {
+    summary = await generateText(prompt, { maxTokens: 120 });
+  } catch (err) {
+    console.error("⚠️ Sentiment analysis failed:", err instanceof ConfigError ? err.message : err.message || err);
+    return "";
+  }
 
-  const summary = res.data.response.trim();
+  if (!String(summary).trim()) return "";
 
   // --- Optionally log it ---
-  fs.appendFileSync("user_summary_log.txt", `Input: ${userInput}\nSummary: ${summary}\n\n`);
+  try {
+    fs.appendFileSync("user_summary_log.txt", `Input: ${userInput}\nSummary: ${summary}\n\n`);
+  } catch {
+    /* logging is best-effort */
+  }
 
   return summary;
 }

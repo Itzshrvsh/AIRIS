@@ -1,6 +1,6 @@
 // 🔥 whatreq.js — AIRIS Action Selector
 const fs = require("fs");
-const axios = require("axios");
+const { generateText } = require("./aiConfig");
 
 async function whatreq(userInput) {
   const prompt = `
@@ -18,15 +18,10 @@ User input: "${userInput}"
 `.trim();
 
   try {
-    // --- 🔗 Send request to local Ollama API ---
-    const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "llava", // you can swap to "llama3" if needed
-      prompt,
-      stream: false
-    });
-
-    // --- 🧠 Extract and normalize the model's response ---
-    const aiResponse = response.data?.response?.trim().toLowerCase();
+    // --- 🧠 Send request via the central AI configuration ---
+    const aiResponse = (await generateText(prompt, { maxTokens: 12 }) || "")
+      .trim()
+      .toLowerCase();
 
     if (!aiResponse) throw new Error("Empty AI response.");
 

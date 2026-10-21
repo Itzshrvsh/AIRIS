@@ -101,6 +101,11 @@
     const inputBox = document.getElementById('inputBox');
     const askButton = document.getElementById('askButton');
     const loader = document.getElementById('loader');
+    const statusText = document.createElement('p');
+    statusText.id = 'statusText';
+    statusText.setAttribute('role', 'status');
+    statusText.style.cssText = 'color:#8fc7ff;font-size:13px;margin:0;min-height:18px;text-align:center;';
+    panel.appendChild(statusText);
 
     // Slide in on load
     setTimeout(() => panel.classList.add('active'), 80);
@@ -120,6 +125,7 @@
       askButton.disabled = true;
       inputBox.disabled = true;
       loader.style.display = 'block';
+      statusText.textContent = '🧠 Thinking...';
 
       try {
         const response = await ipcRenderer.invoke('ask-ai', text);
@@ -131,10 +137,12 @@
 
       } catch (err) {
         console.error('AIRIS Error:', err);
-        alert('AIRIS malfunction. Try again.');
+        statusText.textContent = '❌ AIRIS failed — check AI Settings → Test Connection.';
+        askButton.disabled = false;
+        inputBox.disabled = false;
+        inputBox.focus();
       } finally {
         loader.style.display = 'none';
-        inputBox.value = '';
       }
     }
   </script>
