@@ -12,7 +12,7 @@
 
 | Keys | What it does |
 |---|---|
-| `Ctrl` + `Shift` + `Z` | Open or close the AIRIS drawer (auto-closes after a few seconds) |
+| `Ctrl` + `Shift` + `Z` | Open or close the AIRIS drawer (drawer auto-hides after a few seconds — the 🧠 Start trigger always stays in the corner so you can reopen it) |
 | `Ctrl` + `Shift` + `N` | Wink — the on-screen eyes blink once as a visual acknowledgment |
 | `Ctrl` + `Shift` + `H` | Open the Shortcuts & Help sheet from anywhere |
 | `Esc` | Close the focused AIRIS window (Settings, Help, Chatbot, Terminal, popup) |

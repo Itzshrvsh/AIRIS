@@ -156,8 +156,14 @@ function buildDrawer() {
 }
 buildDrawer();
 
-// Drawer animations
+// Drawer animations. The renderer owns visibility: the main process asks it
+// to show/hide/toggle via IPC, and hover behavior lives here too. The window
+// itself stays alive so the 🧠 Start trigger is always available.
+let drawerOpen = false;
+
 function showDrawer() {
+  clearTimeout(hoverTimeout);
+  drawerOpen = true;
   drawer.style.display = 'flex';
   trigger.setAttribute('aria-expanded', 'true');
   setTimeout(() => {
@@ -167,11 +173,26 @@ function showDrawer() {
 }
 
 function hideDrawer() {
+  clearTimeout(hoverTimeout);
+  stopActivity();
+  drawerOpen = false;
   drawer.style.opacity = '0';
   drawer.style.transform = 'translateY(10px)';
   trigger.setAttribute('aria-expanded', 'false');
   setTimeout(() => { drawer.style.display = 'none'; }, 250);
 }
+
+// Main-process controls: Ctrl+Shift+Z toggles, the inactivity timer hides.
+ipcRenderer.on('menuui-show-drawer', () => {
+  if (!drawerOpen) { showDrawer(); startActivity(); }
+});
+ipcRenderer.on('menuui-hide-drawer', () => {
+  if (drawerOpen) hideDrawer();
+});
+ipcRenderer.on('menuui-toggle-drawer', () => {
+  if (drawerOpen) hideDrawer();
+  else { showDrawer(); startActivity(); }
+});
 
 // Keyboard: open the drawer via Enter/Space on the trigger
 trigger.addEventListener('keydown', (e) => {
@@ -221,8 +242,10 @@ drawer.addEventListener('mouseleave', () => {
 });
 
 // Let clicks pass through the transparent parts of the drawer window. The
-// window stays interactive while the pointer is over the trigger or drawer.
-let lastClickThrough = false;
+// window starts click-through (set by the main process, matching
+// lastClickThrough=true) and the renderer only enables mouse input while
+// the pointer is over the trigger or drawer.
+let lastClickThrough = true;
 function setClickThrough(ignore) {
   if (ignore === lastClickThrough) return;
   lastClickThrough = ignore;

@@ -119,6 +119,24 @@
       0% { background-position: 0%; }
       100% { background-position: 400%; }
     }
+
+    /* Inline reply area: the panel stays open for follow-up messages. */
+    #output {
+      width: 80%;
+      max-height: 220px;
+      overflow-y: auto;
+      background: rgba(15, 15, 20, 0.85);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 160, 255, 0.35);
+      font-size: 13px;
+      color: #dfeaff;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      padding: 10px;
+      display: none;
+    }
+    #output::-webkit-scrollbar { width: 8px; }
+    #output::-webkit-scrollbar-thumb { background: rgba(0, 160, 255, 0.4); border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -128,6 +146,7 @@
     <textarea id="inputBox" placeholder="Type your command..."></textarea>
     <button id="askButton">🚀 Ask AIRIS</button>
     <div id="loader"></div>
+    <div id="output"></div>
   </div>
 
   <script>
@@ -142,6 +161,13 @@
     statusText.setAttribute('role', 'status');
     statusText.style.cssText = 'color:#8fc7ff;font-size:13px;margin:0;min-height:18px;text-align:center;';
     panel.appendChild(statusText);
+    const outputBox = document.getElementById('output');
+
+    function appendOutput(text) {
+      outputBox.style.display = 'block';
+      outputBox.textContent += text + '\n';
+      outputBox.scrollTop = outputBox.scrollHeight;
+    }
 
     // Slide in on load
     setTimeout(() => panel.classList.add('active'), 80);
@@ -177,16 +203,21 @@
         const response = await ipcRenderer.invoke('ask-ai', text);
         ipcRenderer.send('show-sentiment-message', response);
 
-        // Slide out and close
-        closePanel();
+        // Show the reply inline too and keep the panel OPEN — the window is
+        // a toggle: it closes only via × / Esc / the drawer switch. (The old
+        // auto-close made every answer a one-shot and forced a full reopen
+        // for each follow-up.)
+        appendOutput(response);
+        statusText.textContent = '✅ Reply shown — send a follow-up, or press Esc to close.';
 
       } catch (err) {
         console.error('AIRIS Error:', err);
         statusText.textContent = '❌ AIRIS failed — check AI Settings → Test Connection.';
+      } finally {
         askButton.disabled = false;
         inputBox.disabled = false;
         inputBox.focus();
-      } finally {
+        inputBox.scrollTop = inputBox.scrollHeight;
         loader.style.display = 'none';
       }
     }

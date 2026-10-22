@@ -178,12 +178,11 @@
 
         const responseText = result && typeof result === "object" ? result.output : String(result ?? "");
         ipcRenderer.send("show-sentiment-message", responseText);
-        statusText.textContent = "✅ Response received.";
-
-        // 🔻 Automatically close the panel after 1 second
-        setTimeout(() => {
-          hidePanel();
-        }, 1000);
+        statusText.textContent = "✅ Response received — shown in the bottom-right toast. Type another command, or press Esc to close.";
+        // The panel stays open as a toggle now — re-enable the controls so
+        // the user can send another command without reopening.
+        askButton.disabled = false;
+        micButton.disabled = false;
 
       } catch (err) {
         console.error(err);

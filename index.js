@@ -373,6 +373,9 @@ function ensureMainWindow() {
 
   setMainWindow(mainWindow);
   ensureTray();
+  // Persistent drawer trigger — lives as long as the app so "hover the 🧠
+  // Start trigger" always works. The drawer itself opens on hover/shortcut.
+  createMenuUI(false);
 
   mainWindow.on("closed", () => (mainWindow = null));
   return mainWindow;
@@ -508,12 +511,20 @@ function openAIInputWindow() {
 }
 
 
-function createMenuUI() {
+function createMenuUI(openDrawer = false) {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const winWidth = 240, winHeight = 600;
 
-  if (menuuiwindow) {
-    menuuiwindow.show();
+  // The trigger+drawer window is persistent: it is created once alongside the
+  // main window and stays alive so the 🧠 Start trigger is always reachable
+  // by hover. Only the drawer auto-hides — the window is recreated here if
+  // something destroyed it.
+  if (menuuiwindow && !menuuiwindow.isDestroyed()) {
+    menuuiwindow.showInactive();
+    if (openDrawer) {
+      menuuiwindow.webContents.send('menuui-show-drawer');
+      resetMenuAutoClose();
+    }
     return menuuiwindow;
   }
 
@@ -537,7 +548,9 @@ function createMenuUI() {
   });
 
   forceAlwaysOnTop(menuuiwindow);
-  menuuiwindow.setIgnoreMouseEvents(false);
+  // Start click-through so the transparent area never swallows clicks behind
+  // it; the renderer enables mouse input over the trigger/drawer itself.
+  menuuiwindow.setIgnoreMouseEvents(true, { forward: true });
   menuuiwindow.removeMenu();
   menuuiwindow.loadFile('menuui.html');
 
@@ -546,9 +559,17 @@ function createMenuUI() {
     menuuiwindow.showInactive(); // show without stealing focus
   });
 
-  // Let close() actually destroy the window (the previous preventDefault
-  // turned every close into hide(), leaving orphan hidden windows behind
-  // on every toggle/auto-close). Recreate on demand instead.
+  // A shortcut-created drawer opens immediately; the startup-created window
+  // leaves the drawer closed (hover opens it).
+  menuuiwindow.webContents.once('did-finish-load', () => {
+    if (menuuiwindow && !menuuiwindow.isDestroyed() && openDrawer) {
+      menuuiwindow.webContents.send('menuui-show-drawer');
+      resetMenuAutoClose();
+    }
+  });
+
+  // close() only happens on Quit/destroy — the drawer auto-hide path keeps
+  // the window alive so the trigger never disappears.
   menuuiwindow.on('closed', () => {
     clearTimeout(autoCloseTimer);
     menuuiwindow = null;
@@ -562,7 +583,10 @@ function resetMenuAutoClose(ms = 6000) {
   clearTimeout(autoCloseTimer);
   if (!menuuiwindow || menuuiwindow.isDestroyed()) return;
   autoCloseTimer = setTimeout(() => {
-    if (menuuiwindow && !menuuiwindow.isDestroyed()) menuuiwindow.close();
+    if (!menuuiwindow || menuuiwindow.isDestroyed()) return;
+    // Inactivity hides the drawer only — the window (and its permanent
+    // 🧠 Start trigger) stays on screen so the drawer can be reopened.
+    menuuiwindow.webContents.send('menuui-hide-drawer');
   }, ms);
 }
 
@@ -1669,13 +1693,14 @@ app.whenReady().then(async () => {
 
     
     globalShortcut.register('Ctrl+Shift+Z', () => {
-      if (menuuiwindow && !menuuiwindow.isDestroyed()) {
-        clearTimeout(autoCloseTimer);
-        menuuiwindow.close();
-      } else {
-        menuuiwindow = createMenuUI();
-        resetMenuAutoClose();
+      // Toggle: if the drawer window is gone, recreate it with the drawer
+      // open. The renderer owns visibility and answers the toggle.
+      if (!menuuiwindow || menuuiwindow.isDestroyed()) {
+        createMenuUI(true);
+        return;
       }
+      menuuiwindow.webContents.send('menuui-toggle-drawer');
+      resetMenuAutoClose();
     });
     const keywordMap = {
       opera: "Opera",
