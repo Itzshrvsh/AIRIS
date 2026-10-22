@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Meta AI Message</title>
+  <title>AIRIS Message</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&display=swap" rel="stylesheet">
   <style>
@@ -10,7 +10,8 @@
       margin: 0;
       padding: 0;
       background: transparent;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
       overflow: hidden;
       pointer-events: none;
     }
@@ -21,12 +22,14 @@
       right: 20px;
       width: 360px;
       max-width: 90vw;
-      background: rgba(28, 28, 30, 0.88);
-      color: white;
+      background: rgba(28, 28, 30, 0.85);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      backdrop-filter: blur(28px) saturate(160%);
+      color: #f5f5f7;
       padding: 20px 24px;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       opacity: 0;
       pointer-events: none;
       transform: translateY(120%);
@@ -61,19 +64,20 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background-color: #ff5f56;
+      background-color: #ff5f57;
       box-shadow: inset 0 0 1px rgba(0,0,0,0.3);
     }
-    .window-button:nth-child(2) { background-color: #ffbd2e; }
-    .window-button:nth-child(3) { background-color: #27c93f; }
+    .window-button:nth-child(2) { background-color: #febc2e; }
+    .window-button:nth-child(3) { background-color: #28c840; }
   
     #message-text {
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.5;
       margin-top: 10px;
       overflow: visible;
       white-space: pre-wrap;
       word-wrap: break-word;
+      letter-spacing: 0.01em;
     }
   
     #progress-bar {
@@ -88,8 +92,12 @@
     #progress-fill {
       height: 100%;
       width: 100%;
-      background: #0af;
+      background: #0a84ff;
       animation: shrink 8s linear forwards;
+    }
+
+    #message-box.paused #progress-fill {
+      animation-play-state: paused;
     }
   
     @keyframes shrink {
@@ -110,11 +118,22 @@
   </div>
 
   <script>
-    const { ipcRenderer, clipboard } = require('electron');
+    const { ipcRenderer } = require('electron');
     const box = document.getElementById('message-box');
     const textEl = document.getElementById('message-text');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  
+
+    let flowId = 0; // generation counter — only the newest message may close
+    let lastClickThrough = null;
+
+    function setClickThrough(ignore) {
+      if (ignore === lastClickThrough) return;
+      lastClickThrough = ignore;
+      ipcRenderer.send('message-ignore', ignore);
+    }
+
     function adjustHeight() {
       // Let it grow naturally up to 80% of screen height
       box.style.height = "auto";
@@ -127,33 +146,108 @@
         box.style.overflowY = "visible";
       }
     }
-  
-    async function displayMessageFlow(msg) {
+
+    function restartProgress(ms = 8000) {
+      // Restart the shrinking bar for the freshest message. All animation
+      // longhands are set inline so duration and pause state stay in sync
+      // with the JS countdown (a stylesheet shorthand would override them).
+      const p = progressFill;
+      p.style.animation = 'none';
+      void p.offsetWidth; // reflow to restart keyframes
+      p.style.animation = `shrink ${ms}ms linear forwards`;
+      p.style.animationPlayState = box.classList.contains('paused') ? 'paused' : 'running';
+    }
+
+    async function displayMessageFlow(payload) {
+      const sticky = Boolean(payload && typeof payload === "object" && payload.sticky);
+      const msg = String(
+        payload && typeof payload === "object" ? (payload.text ?? "") : (payload ?? "")
+      );
+      const myFlow = ++flowId;
       textEl.textContent = msg;
       adjustHeight();
-  
+
+      // Long answers need longer than 8 s. Hovering pauses the countdown
+      // (and the progress bar), so the user can scroll/copy at their pace.
+      const displayMs = Math.min(30000, Math.max(8000, msg.length * 25));
+      if (sticky) {
+        // Progress/status messages stay until the next message replaces them
+        // (the red dot or Esc can dismiss them manually).
+        progressBar.style.display = 'none';
+        progressFill.style.animation = 'none';
+      } else {
+        progressBar.style.display = '';
+        restartProgress(displayMs);
+      }
+
+      box.classList.remove('closing');
       box.classList.add('show');
-      box.focus();
-  
-      clipboard.writeText(msg);
-  
-      await sleep(8000);
+
+      if (sticky) return;
+
+      let remaining = displayMs;
+      let lastTick = Date.now();
+      while (remaining > 0) {
+        await sleep(100);
+        if (myFlow !== flowId) return; // a newer message took over — stay open
+        const now = Date.now();
+        if (!box.classList.contains('paused')) remaining -= now - lastTick;
+        lastTick = now;
+      }
+
       box.classList.remove('show');
       box.classList.add('closing');
       await sleep(1000);
+      if (myFlow !== flowId) return;
       window.close();
     }
   
     ipcRenderer.on('display-message', async (_, msg) => {
       await displayMessageFlow(msg);
     });
+
+    // Enable interaction (scrollbar, text selection) only while the pointer
+    // is over the visible toast; the rest of this full-height window remains
+    // click-through.
+    document.addEventListener('mousemove', (e) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const overToast = Boolean(el && el.closest('#message-box'));
+      setClickThrough(!overToast);
+    });
+    document.addEventListener('mouseleave', () => setClickThrough(true));
+
+    box.addEventListener('mouseenter', () => {
+      setClickThrough(false);
+      box.classList.add('paused');
+      progressFill.style.animationPlayState = 'paused';
+    });
+    box.addEventListener('mouseleave', () => {
+      box.classList.remove('paused');
+      progressFill.style.animationPlayState = 'running';
+      setClickThrough(true);
+    });
   
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        box.classList.remove('show');
-        box.classList.add('closing');
-      }
+      if (e.key === 'Escape') dismissToast();
     });
+
+    function dismissToast() {
+      const myFlow = ++flowId; // cancel any pending auto-close countdown
+      box.classList.remove('show');
+      box.classList.add('closing');
+      setTimeout(() => {
+        if (myFlow === flowId) window.close();
+      }, 600);
+    }
+
+    // The red "traffic light" dot dismisses the toast, including sticky
+    // progress messages that would otherwise stay until replaced.
+    const closeDot = document.querySelector('#window-controls .window-button');
+    if (closeDot) {
+      closeDot.title = 'Dismiss';
+      closeDot.style.cursor = 'pointer';
+      closeDot.addEventListener('click', dismissToast);
+    }
   </script>
 </body>
 </html>

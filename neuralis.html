@@ -11,25 +11,33 @@
       height: 100%;
       background: transparent;
       overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #f5f5f7;
+      user-select: none;
     }
 
+    /* === macOS side panel (same language as the chatbot) === */
     .panel {
       position: fixed;
       top: 0;
       right: -420px;
       width: 420px;
       height: 100%;
-      background: rgba(20, 20, 20, 0.85);
-      backdrop-filter: blur(12px);
-      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+      background: rgba(30, 30, 32, 0.88);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      backdrop-filter: blur(24px) saturate(160%);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 12px;
-      transition: right 0.4s ease-in-out;
+      transition: right 0.4s cubic-bezier(0.22, 1, 0.36, 1);
     }
+
+    .panel-title, .panel > .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #98989d; font-weight: 600; }
 
     .panel.active { right: 0; }
 
@@ -37,67 +45,79 @@
       width: 80%;
       height: 100px;
       padding: 10px;
-      font-size: 16px;
+      font-size: 15px;
+      font-family: inherit;
       border-radius: 8px;
-      background: rgba(40, 40, 40, 0.9);
-      color: #fff;
-      border: none;
+      background: rgba(0, 0, 0, 0.3);
+      color: #f5f5f7;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       resize: none;
       outline: none;
-      box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+      user-select: text;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    #inputBox:focus {
+      border-color: rgba(10, 132, 255, 0.8);
+      box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
     }
 
     button {
-      padding: 10px 20px;
+      padding: 9px 18px;
       border: none;
       border-radius: 8px;
-      font-weight: bold;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     #askButton {
-      background: #0af;
-      color: #000;
+      background: #0a84ff;
+      color: #fff;
     }
 
-    #askButton:hover { background: #09f; }
+    #askButton:hover { background: #409cff; }
 
     #micButton {
-      background: #0f0;
-      color: #000;
+      background: #30d158;
+      color: #062b12;
     }
 
-    #micButton:hover { background: #0c0; }
+    #micButton:hover { background: #52e08a; }
 
     #closeButton {
       position: absolute;
       top: 12px;
       left: 12px;
-      background: rgba(255, 100, 200, 0.2);
-      color: #ffb6c1;
-      border: 1px solid #ff99cc;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f5f5f7;
+      border: none;
       border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      font-size: 18px;
-      line-height: 30px;
+      width: 28px;
+      height: 28px;
+      font-size: 15px;
+      line-height: 28px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.25s ease-in-out;
-      box-shadow: 0 0 8px #ff69b4;
+      font-weight: 400;
+      transition: background 0.15s ease, transform 0.15s ease;
+      box-shadow: none;
     }
 
     #closeButton:hover {
-      background: rgba(255, 100, 200, 0.4);
-      box-shadow: 0 0 12px #ffb6c1, 0 0 20px #ff69b4;
-      transform: scale(1.1);
+      background: #ff453a;
+      color: #fff;
+      transform: scale(1.06);
     }
 
     #statusText {
-      color: #0af;
-      font-size: 14px;
+      color: #98989d;
+      font-size: 13px;
       text-align: center;
+      user-select: text;
     }
     .listening {
       animation: pulse 1s infinite;
@@ -145,6 +165,10 @@
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
     }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hidePanel();
+    });
   
     // Helper: detect whether it's an automation command or AI query
     function isAutomationCommand(text) {
@@ -156,31 +180,36 @@
   
     askButton.addEventListener("click", async () => {
       const text = inputBox.value.trim();
-      if (!text) return alert("Type or say something first!");
+      if (!text) return (statusText.textContent = "Type or say something first!");
 
+      askButton.disabled = true;
+      micButton.disabled = true;
       try {
         statusText.textContent = "🧠 Processing...";
         
         const result = await ipcRenderer.invoke("Neuralis-ai", text);
 
-        if (result?.type === "automation") {
-          statusText.textContent = "✅ Browser automation done.";
-        } else if (result?.type === "ai") {
-          ipcRenderer.send("show-sentiment-message", result.response);
-          statusText.textContent = "✅ Response received.";
-        } else {
-          statusText.textContent = "⚠️ Unknown response.";
+        if (result && typeof result === "object" && result.type === "error") {
+          statusText.textContent = "⚠️ " + (result.output || "Unknown error.");
+          askButton.disabled = false;
+          micButton.disabled = false;
+          return; // keep the panel open on errors
         }
 
-        // 🔻 Automatically close the panel after 1 second
-        setTimeout(() => {
-          hidePanel();
-        }, 1000);
+        const responseText = result && typeof result === "object" ? result.output : String(result ?? "");
+        ipcRenderer.send("show-sentiment-message", responseText);
+        statusText.textContent = "✅ Response received — shown in the bottom-right toast. Type another command, or press Esc to close.";
+        // The panel stays open as a toggle now — re-enable the controls so
+        // the user can send another command without reopening.
+        askButton.disabled = false;
+        micButton.disabled = false;
 
       } catch (err) {
         console.error(err);
         statusText.textContent = "❌ Error executing command.";
         inputBox.value += `\n\n⚠️ Error: ${err.message || err}`;
+        askButton.disabled = false;
+        micButton.disabled = false;
       }
     });
 
@@ -216,6 +245,7 @@
     // Mic toggle
     micButton.addEventListener('click', async () => {
       try {
+        micButton.disabled = true;
         if (!isRecording) {
           isRecording = true;
           micButton.textContent = "🛑 Stop";
@@ -232,6 +262,8 @@
         statusText.textContent = "❌ Error: " + (err.message || err);
         micButton.textContent = "🎙️ Speak";
         isRecording = false;
+      } finally {
+        micButton.disabled = false;
       }
     });
 

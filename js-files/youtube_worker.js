@@ -109,14 +109,14 @@ async function runPythonWhisperTranscriber(videoId) {
 }
 
 // === Ask AI for summary ===
+// Routes through the central AI configuration (provider/base URL/key/model
+// from AI Settings) instead of a hard-coded Ollama endpoint.
+const { generateText } = require("./aiConfig");
+
 async function askAI(prompt) {
   try {
-    const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "llava",
-      prompt,
-      stream: false,
-    });
-    return response.data.response || "No summary generated.";
+    const response = await generateText(prompt, { maxTokens: 700 });
+    return String(response || "") || "No summary generated.";
   } catch (err) {
     console.error("❌ AI generation error:", err.message);
     return "AI summarization failed.";

@@ -16,15 +16,14 @@ function saveCodeToDesktop(code, language, filename = "Generated") {
     txt: 'txt',
   };
 
-  const ext = extMap[language.toLowerCase()] || 'txt';
-  const fullFilename = `${filename}.${ext}`;  // ✅ Declare this before use!
+  const ext = extMap[String(language).toLowerCase()] || 'txt';
+  const fullFilename = `${filename}.${ext}`;
 
+  // Older code crashed here when ~/Downloads was missing (it referenced an
+  // undefined variable via writeFileSync with {recursive}). Use mkdirSync.
+  const outputDir = path.join(os.homedir(), 'Downloads');
+  fs.mkdirSync(outputDir, { recursive: true });
 
-  const outputDir = path.join(os.homedir(), 'Downloads'); 
-  if (!fs.existsSync(outputDir)) {
-    fs.writeFileSync(path.join(outputDir, 'GeneratedCodes'), yourFileContent , { recursive: true });
-  }
-  
   const outputPath = path.join(outputDir, fullFilename);
   fs.writeFileSync(outputPath, code, 'utf8');
   return outputPath;

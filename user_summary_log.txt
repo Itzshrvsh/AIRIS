@@ -461,3 +461,29 @@ Summary: A friendly greeting
 Input: hi
 Summary: A greeting or form of acknowledgement, typically indicating a friendly and informal tone.
 
+Input: hi
+Summary: *   Input: "hi"
+    *   Task: Summarize into one concise sentence.
+    *   Constraint 1: Capture context, intent, or main idea.
+    *   Constraint 2: No fluff.
+    *   Constraint 3: Do not mention the user input itself.
+    *   Constraint 4: Note the tone (positive, negative, neutral) if relevant.
+
+    *   "hi" is a standard greeting.
+    *   Intent: Initiating contact/greeting.
+    *   Context: A conversation
+
+Input: hi
+Summary: *   Input: "hi"
+    *   Task: Summarize into one concise sentence.
+    *   Constraint 1: Capture context, intent, or main idea.
+    *   Constraint 2: No fluff.
+    *   Constraint 3: Don't mention the user input itself.
+    *   Constraint 4: Note the tone (positive, negative, neutral).
+
+    *   Content: "hi"
+    *   Intent: A simple greeting to initiate a conversation.
+    *   Tone: Neutral/Friendly.
+
+
+

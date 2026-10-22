@@ -11,25 +11,43 @@
       height: 100%;
       background: transparent;
       overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #f5f5f7;
+      user-select: none;
     }
 
-    /* === Slide-in panel === */
+    /* === macOS side panel === */
     .panel {
       position: fixed;
       top: 0;
       right: -420px; /* hidden initially */
       width: 420px;
       height: 100%;
-      background: rgba(20, 20, 20, 0.85);
-      backdrop-filter: blur(12px);
-      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+      box-sizing: border-box;
+      background: rgba(30, 30, 32, 0.88);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      backdrop-filter: blur(24px) saturate(160%);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 12px;
       transition: right 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .panel-title {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #98989d;
+      opacity: 0.9;
+      font-weight: 600;
     }
 
     .panel.active {
@@ -40,44 +58,69 @@
       width: 80%;
       height: 100px;
       padding: 10px;
-      font-size: 16px;
+      font-size: 15px;
+      font-family: inherit;
       border-radius: 8px;
-      background: rgba(40, 40, 40, 0.9);
-      color: #fff;
-      border: none;
+      background: rgba(0, 0, 0, 0.3);
+      color: #f5f5f7;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       resize: none;
       outline: none;
-      box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
-      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      user-select: text;
+      transition: border-color .15s, box-shadow .15s;
     }
 
     #inputBox:focus {
-      box-shadow: 0 0 10px rgba(0, 160, 255, 0.6);
-      border: 1px solid #0af;
+      border-color: rgba(10, 132, 255, 0.8);
+      box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
+    }
+
+    #closeButton {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f5f5f7;
+      font-size: 15px;
+      line-height: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    #closeButton:hover {
+      background: #ff453a;
+      color: #fff;
+      transform: scale(1.06);
     }
 
     #askButton {
-      padding: 10px 20px;
+      padding: 9px 18px;
       border: none;
       border-radius: 8px;
-      background: #0af;
-      color: #000;
-      font-weight: bold;
+      background: #0a84ff;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      transition: background 0.2s, transform 0.15s;
+      transition: background 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     #askButton:hover {
-      background: #09f;
-      transform: scale(1.05);
+      background: #409cff;
     }
 
     #loader {
       display: none;
       width: 80%;
-      height: 6px;
+      height: 4px;
       border-radius: 100px;
-      background: linear-gradient(90deg, #00e0ff, #f441a5, #ffee00, #00e0ff);
+      background: linear-gradient(90deg, #0a84ff, #64d2ff, #0a84ff);
       background-size: 400%;
       animation: loader 2s linear infinite;
     }
@@ -86,13 +129,36 @@
       0% { background-position: 0%; }
       100% { background-position: 400%; }
     }
+
+    /* Inline reply area: the panel stays open for follow-up messages. */
+    #output {
+      width: 80%;
+      max-height: 220px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 13px;
+      color: #e5e5ea;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      padding: 10px;
+      display: none;
+      user-select: text;
+      cursor: text;
+    }
+    #output::-webkit-scrollbar { width: 8px; }
+    #output::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 6px; }
   </style>
 </head>
 <body>
   <div class="panel" id="panel">
+    <div class="panel-title">AIRIS Chatbot</div>
+    <div id="closeButton" title="Close (Esc)" role="button" aria-label="Close">×</div>
     <textarea id="inputBox" placeholder="Type your command..."></textarea>
     <button id="askButton">🚀 Ask AIRIS</button>
     <div id="loader"></div>
+    <div id="output"></div>
   </div>
 
   <script>
@@ -100,10 +166,33 @@
     const panel = document.getElementById('panel');
     const inputBox = document.getElementById('inputBox');
     const askButton = document.getElementById('askButton');
+    const closeButton = document.getElementById('closeButton');
     const loader = document.getElementById('loader');
+    const statusText = document.createElement('p');
+    statusText.id = 'statusText';
+    statusText.setAttribute('role', 'status');
+    statusText.style.cssText = 'color:#98989d;font-size:13px;margin:0;min-height:18px;text-align:center;';
+    panel.appendChild(statusText);
+    const outputBox = document.getElementById('output');
+
+    function appendOutput(text) {
+      outputBox.style.display = 'block';
+      outputBox.textContent += text + '\n';
+      outputBox.scrollTop = outputBox.scrollHeight;
+    }
 
     // Slide in on load
     setTimeout(() => panel.classList.add('active'), 80);
+
+    function closePanel() {
+      panel.classList.remove('active');
+      setTimeout(() => window.close(), 400);
+    }
+
+    closeButton.addEventListener('click', closePanel);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePanel();
+    });
 
     askButton.addEventListener('click', handleSend);
     inputBox.addEventListener('keydown', (e) => {
@@ -120,21 +209,28 @@
       askButton.disabled = true;
       inputBox.disabled = true;
       loader.style.display = 'block';
+      statusText.textContent = '🧠 Thinking...';
 
       try {
         const response = await ipcRenderer.invoke('ask-ai', text);
         ipcRenderer.send('show-sentiment-message', response);
 
-        // Slide out and close
-        panel.classList.remove('active');
-        setTimeout(() => window.close(), 400);
+        // Show the reply inline too and keep the panel OPEN — the window is
+        // a toggle: it closes only via × / Esc / the drawer switch. (The old
+        // auto-close made every answer a one-shot and forced a full reopen
+        // for each follow-up.)
+        appendOutput(response);
+        statusText.textContent = '✅ Reply shown — send a follow-up, or press Esc to close.';
 
       } catch (err) {
         console.error('AIRIS Error:', err);
-        alert('AIRIS malfunction. Try again.');
+        statusText.textContent = '❌ AIRIS failed — check AI Settings → Test Connection.';
       } finally {
+        askButton.disabled = false;
+        inputBox.disabled = false;
+        inputBox.focus();
+        inputBox.scrollTop = inputBox.scrollHeight;
         loader.style.display = 'none';
-        inputBox.value = '';
       }
     }
   </script>

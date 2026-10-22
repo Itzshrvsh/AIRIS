@@ -4,16 +4,23 @@
 <meta charset="UTF-8">
 <title>AI Popup</title>
 <style>
+  html, body { width: 100%; height: 100%; }
   body {
     margin: 0;
-    background: rgba(30,30,32,0.95);
-    color: white;
-    font-family: Roboto, sans-serif;
+    box-sizing: border-box;
+    background: rgba(28, 28, 30, 0.78);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    color: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
     display: flex;
     flex-direction: column;
-    padding: 10px;
+    justify-content: center;
+    padding: 8px;
     border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
 
     /* Smooth fade + slight scale */
     transform: scale(0.95);
@@ -27,19 +34,40 @@
   }
 
   button {
-    margin: 5px 0;
+    margin: 2px 0;
     border: none;
-    padding: 6px 10px;
+    padding: 8px 10px;
     border-radius: 6px;
-    background: #007aff;
-    color: white;
+    background: transparent;
+    color: #f5f5f7;
+    font-size: 13px;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.15s ease;
+    text-align: center;
   }
-  button:hover { background: #0af; }
+  button:hover { background: rgba(10, 132, 255, 0.85); color: #fff; }
+  button:focus-visible { outline: 2px solid rgba(10,132,255,0.8); outline-offset: -2px; }
+  button:disabled { opacity: 0.55; cursor: default; }
 
-  #inputBox { display: none; margin-top: 8px; }
-  input { width: 100%; padding: 5px; border-radius: 5px; border: none; }
+  #inputBox { display: none; margin-top: 6px; }
+  input {
+    width: 100%; padding: 7px 9px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: #f5f5f7;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus {
+    border-color: rgba(10, 132, 255, 0.8);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
+  }
+  #sendBtn { background: #0a84ff; color: #fff; font-weight: 600; margin-top: 6px; }
+  #sendBtn:hover { background: #409cff; }
 </style>
 </head>
 <body>
@@ -54,26 +82,49 @@
 <script>
 const { ipcRenderer } = require('electron');
 const body = document.body;
+const askBtn = document.getElementById('askAiBtn');
+const searchBtn = document.getElementById('aiSearchBtn');
+const sendBtn = document.getElementById('sendBtn');
+const queryInput = document.getElementById('userQuery');
+
+const buttons = [askBtn, searchBtn, sendBtn];
 
 // Trigger smooth fade-in on load
 window.addEventListener('DOMContentLoaded', () => {
   requestAnimationFrame(() => body.classList.add('show'));
 });
 
-document.getElementById('askAiBtn').addEventListener('click', () => {
+function busy() {
+  for (const b of buttons) b.disabled = true;
+  askBtn.textContent = '⏳ Working...';
+}
+
+askBtn.addEventListener('click', () => {
+  busy();
   ipcRenderer.send('popup-choice', 'ask-ai');
 });
 
-document.getElementById('aiSearchBtn').addEventListener('click', () => {
+searchBtn.addEventListener('click', () => {
   document.getElementById('inputBox').style.display = 'block';
-  document.getElementById('askAiBtn').style.display = 'none';
-  document.getElementById('aiSearchBtn').style.display = 'none';
-  document.getElementById('userQuery').focus();
+  askBtn.style.display = 'none';
+  searchBtn.style.display = 'none';
+  queryInput.focus();
 });
 
-document.getElementById('sendBtn').addEventListener('click', () => {
-  const query = document.getElementById('userQuery').value.trim();
-  if (query) ipcRenderer.send('popup-choice', 'ai-search', query);
+sendBtn.addEventListener('click', () => {
+  const query = queryInput.value.trim();
+  if (!query) return;
+  busy();
+  ipcRenderer.send('popup-choice', 'ai-search', query);
+});
+
+queryInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendBtn.click();
+});
+
+// Esc dismisses the popup, including while an AI request is in flight.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') window.close();
 });
 </script>
 </body>

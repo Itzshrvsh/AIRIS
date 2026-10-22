@@ -1,283 +1,156 @@
-<<<<<<< HEAD
-Collecting workspace informationHere is a complete README for your AIRIS project, including all available features and descriptions based on your workspace:
-
-```markdown
-# 🧠 AIRIS
-
-AIRIS (**AI-Responsive Intelligent Shell**) is a next-gen AI-powered desktop assistant and terminal shell.  
-It converts **natural language instructions** into **Windows CMD/PowerShell commands**, answers questions, summarizes YouTube videos, and provides real-time screen analysis and roasting.
-=======
-
-
 # AIRIS - A Context-Aware Non-Verbal AI Assistant for Solo Developers
 
+**AIRIS** (AI-Responsive Intelligent Shell) is a lightweight, context-aware AI assistant that integrates into a developer's workflow. It acts as a non-verbal sidekick, offering code patching, text explanation, YouTube summarization, screen analysis, file generation, natural-language terminal commands and more — all accessible via shortcuts without interrupting your work.
 
-**AIRIS** is a lightweight, context-aware AI assistant designed to integrate seamlessly into a developer’s workflow. It acts as a non-verbal sidekick, offering code patching, text explanation, YouTube summarization, file generation, and more — all accessible via shortcut keys without interrupting your work.
->>>>>>> 6d7fe39533b7572aca18de81b0d25093fca919dc
+> Runs with **any OpenAI-compatible provider** — a local server (Ollama `…/v1`, LM Studio `…/v1`, llama.cpp `…/v1`) or a hosted compatible endpoint. See **AI Settings** below.
 
 ---
 
 ## ✨ Features
 
-<<<<<<< HEAD
-- **Natural Language to CMD/PowerShell**  
-  Instantly convert plain English instructions into ready-to-run Windows terminal commands.  
-  No explanations, just the command you need.
+* **Highlight & Explain** – Highlight text to get context-aware explanations.
+* **Content Patching** – Quickly fix or improve code with AI-powered suggestions.
+* **Chatbot Interface** – Non-verbal AI assistant that reacts based on workflow context.
+* **NEURALIS Panel** – App launching with voice capture, plus guided email automation.
+* **Natural Language Terminal** – Convert instructions into Windows commands and run them.
+* **File Generation** – Automatically generate documents or code files.
+* **YouTube Summarization** – Convert long videos into concise, digestible summaries.
+* **Screen Analysis & Roasting** – AIRIS can read visible text and give feedback while you study or waste time.
+* **Floating Overlay Eyes** – Futuristic always-on-top UI with idle blinking and mouse tracking.
+* **Memory & Context** – Chat history and summaries are remembered locally (`data/memory.json`; Supabase memory when configured).
 
-- **AI-Powered Q&A**  
-  Ask technical or general questions and get concise, context-aware answers powered by Llama3.
+---
 
-- **Screen Analysis & Roasting**  
-  AIRIS can analyze your screen, read visible text, and roast you if you're wasting time or provide insights if you're studying.
+## 🎛️ AI Settings (central configuration)
 
-- **YouTube Video Summarizer**  
-  Paste a YouTube link and AIRIS will download subtitles, extract key points, and summarize the video in full or in one punchy line.
+All AI-powered features read **one** configuration (`data/ai-config.json`):
+provider/preset, base URL, API key, model, plus optional per-feature overrides
+(vision, summarizer, transcription, fast tasks) and request options.
 
-- **Clipboard Sentiment Analysis**  
-  Select text anywhere, hit a hotkey, and AIRIS will analyze and summarize or answer questions about it.
+Open it from:
 
-- **Overlay & Eye Tracking**  
-  Futuristic floating UI with animated eyes, idle detection, and mouse tracking.
+* The **🧠 Start drawer → ⚙️ AI Settings**, or the **system-tray menu → AI Settings**.
 
-- **Personalization & Memory**  
-  Remembers your chat history, system instructions, and settings for a tailored experience.
+Key abilities:
 
-- **Roast Mode**  
-  Enable/disable sarcastic roasting for fun productivity nudges.
+* **Test Connection** button — reports reachable / unreachable / auth / discovery problems with actionable messages.
+* **Refresh Models** — pulls the model list from `{baseURL}/models`.
+* **Manual model entry** — works even when a server has no discovery endpoint.
+* Base URLs are normalized; duplicated `/v1` segments cannot create paths like `/v1/v1/chat/completions`.
+* No API key is logged, echoed or embedded in errors.
 
-- **Hand Gesture Detection**  
-  (Planned) Detects hand gestures for quick actions.
+Environment variables: `SUPABASE_URL` / `SUPABASE_KEY` in a local `.env` (never committed) power the optional cloud memory; `.env.example` documents the expected keys.
 
-- **Global Hotkeys**  
-  - `Ctrl+Space`: Open AI input window  
-  - `Ctrl+Shift+Y`: Summarize YouTube video from clipboard  
-  - `Ctrl+Alt+C`: Analyze selected clipboard text  
-  - `Ctrl+Shift+R`: Roast your current screen  
-  - `Ctrl+Alt+R`: Sarcastic roast based on screen text  
-  - `Ctrl+Shift+Z`: Quick success message  
-  - `Ctrl+Shift+I`: Open DevTools for message window
+### Desktop input (robotjs with pyautogui fallback)
+
+Keyboard/mouse control (`robot.*`) uses the native `robotjs` module when it has
+been built. robotjs needs the **ClangCL** component of Visual Studio Build
+Tools on modern Electron; without it AIRIS automatically switches to a
+persistent **pyautogui worker** (`python/input_worker.py`, driven by
+`js-files/input.js`) — no features are lost. Restore the native backend with
+`npx electron-rebuild -f -w robotjs` once the ClangCL component is installed.
+
+---
+
+## 🧭 Global shortcut keys
+
+* `Ctrl+Shift+Z` — toggle the Start drawer
+* `Ctrl+Shift+N` — wink (eyes)
+
+Other hotkeys from earlier versions are described in `menu.html` / `notes.txt`; the drawer and tray are the supported entry points.
 
 ---
 
 ## 🖥️ UI Components
 
-- **Menu Launcher** ([menu.html](menu.html))  
-  Start/stop AIRIS, toggle features, change reply/voice language, and adjust settings.
-
-- **Main Overlay** ([index.html](index.html))  
-  Animated eyes, idle blinking, mouse tracking, and shortcut handling.
-
-- **Terminal Window** ([termi.html](termi.html))  
-  Converts instructions to Windows commands, with strict safety and formatting rules.
-
-- **Message Popup** ([bin/messagewin.html](bin/messagewin.html))  
-  Shows AI responses, summaries, and supports speech synthesis.
-
-- **Glow Window** ([glow.html](glow.html))  
-  Visual border glow effect for notifications.
+* **Splash** (`splash.html`) — intro animation.
+* **Eyes overlay** (`index.html`) — transparent always-on-top layer.
+* **Start drawer** (`menuui.html`) — actions + AI Settings entry.
+* **Chat input** (`ai_input.html`) — ask AIRIS.
+* **AI Settings** (`settings.html`) — provider/model configuration.
+* **Terminal** (`termi.html`) — natural-language to Windows command.
+* **NEURALIS** (`neuralis.html`) — launcher/assistant side panel with speech input.
+* **Message popup** (`popup.html`) — quick Ask AI / AI Search on highlighted text.
+* **Message window** (`messagewin.html`) — response toast with copy-to-clipboard.
 
 ---
 
 ## ⚙️ Installation
 
-1. **Clone the repository**
-   ```sh
+1. Clone the repository:
+   ```bash
    git clone https://github.com/itzshrvsh/AIRIS.git
    cd AIRIS
    ```
-
-2. **Install dependencies**
-   ```sh
+2. Install dependencies:
+   ```bash
    npm install
    ```
-
-3. **Run the app**
-   ```sh
+3. Start AIRIS:
+   ```bash
    npm start
    ```
+4. Open **drawer → ⚙️ AI Settings** and point AIRIS at any OpenAI-compatible server:
+   * **LM Studio (local):** load a model, start the server (default `http://localhost:1234`), set the base URL to `http://localhost:1234/v1`, leave the model on **✨ Auto**, then **Test Connection → Save Settings**. The URL is all you need.
+   * **Ollama (local):** keep `http://localhost:11434/v1` and pick a model. The default preset runs `ollama pull llava` on startup.
+   * **Hosted / custom:** use any OpenAI-compatible `/v1` endpoint, with an API key if the provider requires one.
 
-   > Requires Node.js, Electron, and Ollama (for Llama3 model).
-
----
-
-## 🛠️ Tech Stack
-
-- **Electron** — Desktop UI and system integration
-- **Node.js** — Backend logic and hotkey handling
-- **Llama3 (Ollama)** — Local AI model for Q&A and sentiment
-- **Tesseract.js** — OCR for screen analysis
-- **yt-dlp** — Subtitle extraction for YouTube summarization
-- **Sharp** — Image processing for OCR
-
----
-
-## 📚 Usage
-
-- **Ask AIRIS**: Use the input window or hotkeys to ask questions, get commands, or summaries.
-- **Summarize YouTube**: Copy a YouTube link, press `Ctrl+Shift+Y`, and choose full or short summary.
-- **Roast/Analyze Screen**: Press `Ctrl+Shift+R` or `Ctrl+Alt+R` for instant feedback.
-- **Terminal Commands**: Use the terminal window for natural language to Windows command conversion.
-
----
-
-## 📝 Customization
-
-- Edit system_prompt.txt and personalization.json for custom instructions and memory.
-- Toggle features in the menu launcher.
-
----
-
-## 📄 License
-
-MIT License  
-Copyright (c) 2025 Itzshrvsh
-
----
-
-## 📧 Contact
-
-Email: itzshrvsh212@gmail.com
-=======
-AIRIS is designed to empower developers with efficiency and intelligence at their fingertips:
-
-* **Highlight & Explain** – Highlight text to get context-aware explanations.
-* **Content Patching** – Quickly fix or improve code with AI-powered suggestions.
-* **Chatbot Interface** – Non-verbal AI assistant that reacts based on workflow context.
-* **File Generation** – Automatically generate documents or code files.
-* **YouTube Summarization** – Convert long videos into concise, digestible summaries.
-* **Natural Language Terminal** – Run commands and get outputs using plain language.
-* **Voice Commands** – (Coming Soon) Control AIRIS with your voice.
-
----
-
-## 🎯 Goals
-
-* Provide **fast and seamless assistance** for solo developers.
-* Keep users **in workflow** using shortcut-based access.
-* Operate **offline wherever possible**, respecting user privacy.
-* Integrate AI **directly with your desktop**, not just as a web app or chatbot.
+> AIRIS discovers the loaded model via `GET {baseURL}/models`, so leaving the model on **Auto** means "use whatever the server has loaded". For screen analysis, load a multimodal model and set it under *Advanced → Vision model*. See **[SHORTCUTS.md](SHORTCUTS.md)** (or press `Ctrl+Shift+H` in the app) for the shortcut sheet and setup guide.
 
 ---
 
 ## 🛠️ Technology Stack
 
-AIRIS leverages a combination of familiar technologies:
-
-* **Frontend:** HTML, CSS, JavaScript (Electron)
-* **Backend:** Node.js + Python
-* **AI Model:** [Ollama LLaVA](https://ollama.com) (7B parameters, optimized for local usage)
-* **Utilities:** RobotJS for input automation, clipboard management, and OS interactions
-
----
-
-## 💡 How It Works
-
-1. **Shortcut-Based Access** – Trigger any AIRIS feature without leaving your current task.
-2. **Context-Aware Analysis** – Highlight text, take screenshots, or select code for AI evaluation.
-3. **Inline AI Assistance** – AI processes input and outputs results directly where needed.
-4. **Seamless Workflow Integration** – Visual feedback from AIRIS is minimal but informative, with “eyes” reflecting activity states.
+* **Electron** — desktop UI and system integration
+* **Node.js** — backend logic, hotkeys, AI client (`js-files/aiConfig.js`)
+* **Python** — browser automation and coordinate services (reads the same `data/ai-config.json`)
+* **OpenAI-compatible REST** — chat completions + model discovery
+* **Tesseract.js / whisper** — OCR/transcription utilities
+* **Sharp / ffmpeg-static** — media processing
+* **Supabase (optional)** — remote memory when `.env` is configured
 
 ---
 
-## 🎛️ Desktop Operations
+## 📚 Usage
 
-* Runs in the background as a lightweight Electron app.
-* Activatable via global shortcuts.
-* Features modular access with minimal disruption to workflow.
-* Generated files and session data are stored locally for privacy.
-
----
-
-## ⚡ Installation
-
-1. Clone this repository:
-
-```bash
-git clone https://github.com/yourusername/AIRIS.git
-cd AIRIS
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Start AIRIS:
-
-```bash
-npm start
-```
-
-4. (Optional) Customize shortcut keys in `settings.json` to fit your workflow.
+* **Highlight & Explain:** select text → drawer → *Highlight & Explain*.
+* **Content Patching:** highlight code → drawer → *Patch Content*.
+* **Chatbot:** drawer → *Chatbot* (or `Ctrl+Shift+I` from earlier builds).
+* **Terminal:** drawer → *Terminal* → type an instruction; the generated command runs via the main process.
+* **YouTube Summary:** drawer → *YouTube Summary*.
+* **AI Settings:** drawer → *⚙️ AI Settings* — configure provider + model once for every feature.
+* **Shortcuts & Help:** drawer → *⌨ Shortcuts & Help*, the tray menu, or `Ctrl+Shift+H` — opens the in-app sheet (printable / save-as-PDF). Softcopy: [SHORTCUTS.md](SHORTCUTS.md) · [AIRIS-Shortcuts.pdf](AIRIS-Shortcuts.pdf).
 
 ---
 
-## 🖥️ Usage
+## 🔗 Key Files
 
-* **Highlight & Explain:** Select text → press assigned shortcut → get explanation.
-* **Content Patching:** Highlight code → shortcut → AI suggests fix → auto-paste.
-* **YouTube Summary:** Copy video URL → shortcut → get summary.
-* **Chatbot / Terminal Toggle:** Open/close via shortcuts.
-
-> Shortcut keys are fully customizable to avoid conflicts with OS or other software.
-
----
-
-## 📚 References
-
-1. Chavan, S., Giri, S., Gornar, S., et al., *EduMate: AI-Based Student Support Platform with OCR and Voice Assistance*, IEEE ESCI, 2025
-2. Design, Validation, and Risk Assessment Team, *Design, Validation, and Risk Assessment of LLM-Based Systems*, IEEE ISSE, 2024
-3. Ge, Y., Ren, Y., et al., *LLM as OS, Agents as Apps: Envisioning AIOS*, arXiv, 2023
-4. Yin, W., Xu, M., et al., *LLM as a System Service on Mobile Devices*, 2024
-5. Lim, M., Ku, J., et al., *Real-Time Avatar-Based Speech-to-Speech Conversational AI Tutor*, IEEE ISCAIE, 2025
-
-*(Full references available in the paper.)*
+* `index.js` — main Electron process, windows, hotkeys, IPC
+* `js-files/aiConfig.js` — central AI provider configuration + client
+* `js-files/aiRequest.js` — one-shot prompt helper (uses the central config)
+* `js-files/input.js` — robotjs / pyautogui input control
+* `js-files/screenObserver.js` — screen capture + vision analysis
+* `settings.html` — AI Settings UI
+* `airis_config.py` — Python-side reader for the same configuration
+* `test/aiConfig.test.js` — unit tests (`npm test`)
+* `scripts/smoke-main.js` — head-less Electron smoke check (`npx electron scripts/smoke-main.js`)
+* `scripts/test-input-worker.js` — zero-displacement input-worker check
 
 ---
 
-## ✨ Notes
+## 🚀 Contributing
 
-* AIRIS is designed to **respect user privacy**: most data processing occurs locally.
-* Features like YouTube summarization require internet access.
-* The project is **open for contribution** — fork it, experiment, and improve.
+Pull requests and suggestions are welcome!
+
+## 💡 Future Plans
+
+* Linux/macOS support
+* Plugin system for custom AI integrations
+* Hand gesture detection
+* More advanced screen analysis
 
 ---
 
 ## 📝 License
 
 [MIT License](LICENSE)
->>>>>>> 6d7fe39533b7572aca18de81b0d25093fca919dc
-
-
-<<<<<<< HEAD
-## 🚀 Contributing
-
-Pull requests and suggestions are welcome!
-
----
-
-## 💡 Future Plans
-
-- Linux/macOS support
-- Plugin system for custom AI integrations
-- Hand gesture detection
-- More advanced screen analysis
-
----
-
-## 🔗 Key Files
-
-- index.js — Main Electron process and hotkey logic
-- aiRequest.js — AI request handler
-- screenObserver.js — Screen OCR and analysis
-- youtubeSummarizer.js — YouTube subtitle summarizer
-- sentimentAnalyzer.js — Sentiment and Q&A logic
-- fileGenerator.js — Save generated code to desktop
-
----
-
-AIRIS — Your AI-powered productivity shell for Windows.
-```
-=======
->>>>>>> 6d7fe39533b7572aca18de81b0d25093fca919dc

@@ -14,10 +14,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # ==============================
-# CONFIG
+# CONFIG — central AI configuration (data/ai-config.json)
 # ==============================
-LLAVA_API = "http://localhost:11434/api/generate"
-MODEL = "llava"
+from airis_config import chat  # noqa: E402
 
 # ==============================
 # SETUP BROWSER (only once)
@@ -57,15 +56,15 @@ Strictly output valid JSON — no extra text.
 
 User command: "{command}"
 """
-    payload = {"model": MODEL, "prompt": prompt, "images": [screenshot_b64], "stream": False}
     try:
-        res = requests.post(LLAVA_API, json=payload, timeout=90)
-        res.raise_for_status()
-        resp = res.json().get("response", "")
-        print("\n🧠 LLaVA Output:\n", resp)
-        return extract_json_block(resp).get("actions", [])
+        raw, error = chat(prompt, feature="vision", image_b64=screenshot_b64, max_tokens=500)
+        if error:
+            print(f"Error querying vision model: {error}")
+            return []
+        print("\n🧠 Model Output:\n", raw)
+        return extract_json_block(raw).get("actions", [])
     except Exception as e:
-        print(f"Error querying LLaVA: {e}")
+        print(f"Error querying model: {e}")
         return []
 
 

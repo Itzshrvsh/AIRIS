@@ -1,11 +1,9 @@
-import requests
 import json
 import pyautogui
 import time
 import base64
 
-API_URL = "http://localhost:11434/api/generate"
-MODEL = "llava"
+from airis_config import chat  # central AI configuration (data/ai-config.json)
 
 def capture_screen(path="screen.png"):
     screenshot = pyautogui.screenshot()
@@ -16,7 +14,7 @@ def encode_image_to_base64(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def get_element_coordinates(description, image_path, model=MODEL):
+def get_element_coordinates(description, image_path, model=None):
     image_b64 = encode_image_to_base64(image_path)
 
     prompt = f"""
@@ -33,22 +31,16 @@ dont return UNKNOWN, return an empty list if nothing is found.
 if any service name provided in the description, try to find its logo on screen, get to know its color scheme and check for the user req and find it.
 """
 
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "images": [image_b64],
-        "stream": False
-    }
-
     try:
-        res = requests.post(API_URL, json=payload)
-        res.raise_for_status()
-        text = res.json().get("response", "").strip()
-        text = text.replace("```json", "").replace("```", "").strip()
+        text, error = chat(prompt, feature="vision", image_b64=image_b64, model=model, max_tokens=400)
+        if error:
+            print("Error contacting the configured AI provider:", error)
+            return None
+        text = text.strip().replace("```json", "").replace("```", "").strip()
         coords = json.loads(text)
         return coords
     except Exception as e:
-        print("Error contacting LLaVA or parsing response:", e)
+        print("Error parsing vision response:", e)
         return None
 
 def select_best_box(coords):

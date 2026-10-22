@@ -1,7 +1,7 @@
 const screenshot = require('screenshot-desktop');
-const fetch = require('node-fetch'); // ensure node-fetch installed for Node 18-
 const path = require('path');
 const fs = require('fs');
+const { generateVisionText, ConfigError } = require('./aiConfig');
 
 const TEMP_PATH = path.join(__dirname, 'last_screen.png');
 
@@ -24,14 +24,12 @@ async function analyzeScreen({ saveScreenshot = false, retryCount = 1 } = {}) {
     const base64Image = imgBuffer.toString("base64");
     console.log(`[analyzeScreen] ✅ Base64 conversion done (length: ${base64Image.length} chars, truncated for logs)`);
 
-    // Step 3: Prepare LLaVA payload
-    console.log("[analyzeScreen] Step 3/5: Preparing payload for LLaVA...");
-    const payload = {
-      model: "llava",
-      messages: [
-        {
-          role: "system",
-          content: `
+    // Step 3: Vision request via the central AI configuration.
+    // Uses the configured provider/base URL/API key and the "vision"
+    // feature model (falling back to the main model) so switching the
+    // provider in AI Settings applies here too.
+    console.log("[analyzeScreen] Step 3/5: Preparing vision request via central AI config...");
+    const systemPrompt = `
     You are a **smart vision-debug assistant** specialized in analyzing code screenshots, IDE/compiler outputs, and runtime errors.
     
     Your goals:
@@ -43,57 +41,57 @@ async function analyzeScreen({ saveScreenshot = false, retryCount = 1 } = {}) {
     6. If multiple possibilities exist, list them with probabilities.
     7. When possible, explain in both beginner-friendly terms and expert-level detail.
     8. Never just describe the screenshot—always aim to solve the underlying problem.
-        `
-        },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Analyze this screenshot, detect the runtime/environment, explain the issue, and suggest fixes with code or commands if needed." },
-            { type: "image_url", image_url: `data:image/png;base64,${base64Image}` }
-          ]
-        }
-      ]
-    };
-    
-    
-    console.log("[analyzeScreen] ✅ Payload prepared");
+        `;
 
-    // Step 4: Send request to LLaVA
-    console.log("[analyzeScreen] Step 4/5: Sending request to LLaVA API...");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
-
-    const response = await fetch("http://localhost:11434/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.LLAVA_API_KEY || ""}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
+    console.log("[analyzeScreen] Step 4/5: Sending vision request to configured AI provider...");
+    const instruction = "Analyze this screenshot, detect the runtime/environment, explain the issue, and suggest fixes with code or commands if needed.";
+    const output = await generateVisionText({
+      // Fold the instructions into the first (single) request so the model
+      // actually gets them; the old code computed systemPrompt but never
+      // sent it on the primary attempt.
+      prompt: `${systemPrompt}\n\nUser: ${instruction}`,
+      imageBase64: base64Image,
+      mimeType: "image/png",
+      maxTokens: 1200,
+    }).catch(async (err) => {
+      // A ConfigError (missing key, no model loaded, unsupported vision
+      // model) will not be fixed by changing the prompt, so fail fast
+      // instead of making the user wait through a second request.
+      if (err instanceof ConfigError) throw err;
+      console.log("[analyzeScreen] Retrying with a simplified vision request...");
+      return generateVisionText({
+        prompt: instruction,
+        imageBase64: base64Image,
+        mimeType: "image/png",
+        maxTokens: 900,
+      });
     });
 
-    clearTimeout(timeout);
-    console.log(`[analyzeScreen] ✅ Request sent (status: ${response.status} ${response.statusText})`);
+    if (!output || !String(output).trim()) {
+      return "⚠️ The vision model returned an empty answer. Try a vision-capable model in AI Settings.";
+    }
 
-    // Step 5: Parse response
-    console.log("[analyzeScreen] Step 5/5: Parsing response...");
-    const result = await response.json();
-    const output = result.choices?.[0]?.message?.content || "⚠️ No response from LLaVA";
-    console.log("[analyzeScreen] 🎯 LLaVA response preview:", output.slice(0, 500).replace(/\n/g, " "));
+    console.log(`[analyzeScreen] ✅ Response received`);
 
+    console.log("[analyzeScreen] 🎯 Vision response preview:", output.slice(0, 500).replace(/\n/g, " "));
     console.log("[analyzeScreen] ✅ Screen analysis complete!");
     return output;
 
   } catch (err) {
     console.error("[analyzeScreen] ❌ ERROR:", err.message || err);
 
+    // Don't retry configuration problems: they need a settings change.
+    if (err instanceof ConfigError) {
+      return `❌ ${err.message}`;
+    }
+
     if (retryCount > 0) {
       console.log("[analyzeScreen] 🔄 Retrying screen analysis...");
       return analyzeScreen({ saveScreenshot, retryCount: retryCount - 1 });
     }
 
-    return "❌ I couldn't capture/analyze the screen. Check permissions, API, or network.";
+    const hint = err && err.message ? ` (${err.message})` : "";
+    return `❌ I couldn't capture/analyze the screen. Check permissions, the AI connection (AI Settings), or network.${hint}`;
   }
 }
 

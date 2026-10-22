@@ -10,10 +10,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # ======================================
-# CONFIG
+# CONFIG — sourced from the central AI configuration
+# (data/ai-config.json, editable in AIRIS → AI Settings).
+# See airis_config.py for the loader/chat helper.
 # ======================================
-LLAVA_API = "http://localhost:11434/api/generate"
-MODEL = "llava"
+from airis_config import chat  # noqa: E402  (airis_config.py sits next to this file)
+
 PROFILE_PATH = r"C:\Users\itzsh\AppData\Local\Google\Chrome\User Data"
 
 
@@ -68,7 +70,7 @@ def extract_json(text):
 
 
 def ask_llava_for_actions(command, screenshot_b64):
-    """Query LLaVA for JSON-encoded browser actions."""
+    """Query the configured vision model for JSON-encoded browser actions."""
     prompt = f"""
 You are a web automation planner.
 Output only valid JSON describing actions to achieve:
@@ -85,21 +87,15 @@ Example:
 }}
 """
 
-    payload = {
-        "model": MODEL,
-        "prompt": prompt,
-        "images": [screenshot_b64],
-        "stream": False
-    }
-
     try:
-        res = requests.post(LLAVA_API, json=payload, timeout=120)
-        res.raise_for_status()
-        raw = res.json().get("response", "")
-        print("\n🧠 LLaVA Output:\n", raw)
+        raw, error = chat(prompt, feature="vision", image_b64=screenshot_b64, max_tokens=500)
+        if error:
+            print("❌ Vision model query failed:", error)
+            return []
+        print("\n🧠 Model Output:\n", raw)
         return extract_json(raw).get("actions", [])
     except Exception as e:
-        print(f"❌ LLaVA query failed: {e}")
+        print(f"❌ Vision query failed: {e}")
         return []
 
 

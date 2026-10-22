@@ -1,6 +1,10 @@
-import fs from "fs";
-import screenshot from "screenshot-desktop";
-import fetch from "node-fetch";
+// js-files/findElementCoords.js — locate a UI element's bounding box from a
+// screenshot using the central AI vision configuration (js-files/aiConfig.js:
+// provider/base URL/key/model resolved from AI Settings, vision override
+// supported). Previously ESM in a CommonJS package and hard-coded to Ollama.
+const fs = require("fs");
+const screenshot = require("screenshot-desktop");
+const { generateVisionText } = require("./aiConfig");
 
 async function findElementCoords(elementName = "OK button") {
   try {
@@ -9,7 +13,7 @@ async function findElementCoords(elementName = "OK button") {
     const imgBuffer = await screenshot({ format: "png" });
     fs.writeFileSync(imgPath, imgBuffer);
 
-    // 2️⃣ Convert image to base64 for LLaVA
+    // 2️⃣ Convert image to base64
     const base64Image = imgBuffer.toString("base64");
 
     // 3️⃣ Construct the prompt
@@ -21,25 +25,21 @@ async function findElementCoords(elementName = "OK button") {
       If not found, return {"x1": -1, "y1": -1, "x2": -1, "y2": -1}.
     `.trim();
 
-    // 4️⃣ Send to LLaVA via Ollama API
-    const res = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llava",
-        prompt,
-        images: [base64Image],
-        stream: false,
-      }),
+    // 4️⃣ Ask the configured vision model
+    const text = await generateVisionText({
+      prompt,
+      imageBase64: base64Image,
+      mimeType: "image/png",
+      maxTokens: 200,
+    }).catch((err) => {
+      console.error("Vision request failed:", err.message);
+      return "";
     });
 
-    const data = await res.json();
-    const text = data.response || data.output || "";
-
-    console.log("Raw LLaVA output:\n", text);
+    console.log("Raw vision output:\n", text);
 
     // 5️⃣ Extract JSON coordinates using regex
-    const jsonMatch = text.match(/\{.*?\}/s);
+    const jsonMatch = String(text).match(/\{.*?\}/s);
     if (!jsonMatch) throw new Error("No JSON found in response");
 
     const coords = JSON.parse(jsonMatch[0]);
@@ -51,5 +51,9 @@ async function findElementCoords(elementName = "OK button") {
   }
 }
 
-// Example usage
-findElementCoords("send button");
+module.exports = { findElementCoords };
+
+// CLI demo: only runs when invoked directly (node js-files/findElementCoords.js)
+if (require.main === module) {
+  findElementCoords("send button");
+}

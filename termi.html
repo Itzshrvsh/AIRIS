@@ -11,26 +11,30 @@
     height: 100%;
     background: transparent;
     overflow: hidden;
-    font-family: 'Courier New', monospace;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #f5f5f7;
+    user-select: none;
   }
 
-  /* Sliding futuristic panel */
+  /* Sliding macOS side panel */
   .panel {
     position: fixed;
     top: 0;
     right: -460px;
     width: 460px;
     height: 100%;
-    background: linear-gradient(45deg, rgba(26, 13, 26, 0.9), rgba(55, 0, 60, 0.85));
-    backdrop-filter: blur(10px);
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.7);
-    border-left: 2px solid #000;
-    border-right: 2px solid #000;
+    box-sizing: border-box;
+    background: rgba(24, 24, 26, 0.92);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border-left: 1px solid rgba(255,255,255,0.12);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    color: #e0c0ff;
+    color: #f5f5f7;
     transition: right 0.45s cubic-bezier(0.25, 1, 0.3, 1);
     z-index: 1000;
   }
@@ -38,28 +42,41 @@
     right: 0;
   }
 
-  /* Close button */
+  /* Header with title + close button (keeps the button off the input) */
+  #header {
+    width: 90%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #98989d;
+    opacity: 0.9;
+    font-weight: 600;
+  }
   #closeButton {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgba(255, 100, 200, 0.2);
-    color: #ffb6c1;
-    border: 1px solid #ff99cc;
+    flex: 0 0 auto;
+    background: rgba(255, 255, 255, 0.1);
+    color: #f5f5f7;
+    border: none;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
-    line-height: 30px;
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+    line-height: 28px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.25s ease-in-out;
-    box-shadow: 0 0 8px #ff69b4;
+    transition: background 0.15s ease, transform 0.15s ease;
+    box-shadow: none;
   }
   #closeButton:hover {
-    background: rgba(255, 100, 200, 0.4);
-    box-shadow: 0 0 12px #ffb6c1, 0 0 20px #ff69b4;
-    transform: scale(1.1);
+    background: #ff453a;
+    color: #fff;
+    transform: scale(1.06);
   }
 
   /* Input area */
@@ -67,54 +84,62 @@
     width: 90%;
     height: 100px;
     padding: 10px;
-    font-size: 15px;
+    font-size: 14px;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
     border-radius: 8px;
-    background: rgba(40, 40, 40, 0.9);
-    color: #e0c0ff;
-    border: 1px solid #782ec2;
+    background: rgba(0, 0, 0, 0.3);
+    color: #f5f5f7;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     resize: none;
     outline: none;
-    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+    user-select: text;
+    transition: border-color .15s, box-shadow .15s;
   }
   #inputBox:focus {
-    border-color: #c4b700;
+    border-color: rgba(10, 132, 255, 0.8);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
   }
 
   #askButton {
     margin-top: 12px;
-    padding: 10px 20px;
+    padding: 9px 18px;
     border: none;
     border-radius: 8px;
-    background: linear-gradient(135deg, #ff66cc, #aa88ff);
-    color: #000;
-    font-weight: bold;
+    background: #0a84ff;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 0 6px #ffb6c1;
+    transition: background 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
   #askButton:hover {
-    background: linear-gradient(135deg, #ff99dd, #c0aaff);
-    transform: translateY(-1px);
+    background: #409cff;
   }
 
   #output {
     width: 90%;
     height: 50%;
-    background: rgba(15, 10, 20, 0.7);
-    border-radius: 6px;
-    border: 1px solid #333;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     margin-top: 15px;
-    font-family: Consolas, monospace;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
     font-size: 13px;
-    color: #dda0dd;
+    color: #d1d1d6;
     overflow-y: auto;
     white-space: pre-wrap;
     padding: 10px;
+    user-select: text;
+    cursor: text;
   }
+  #output::-webkit-scrollbar { width: 8px; }
+  #output::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 6px; }
 
   .loader {
     margin-top: 8px;
-    color: #ffb6c1;
+    color: #98989d;
     font-style: italic;
     animation: blink 1s infinite;
   }
@@ -123,13 +148,15 @@
 </head>
 <body>
   <div class="panel" id="panel">
-    <div id="closeButton">×</div>
+    <div id="header">
+      <div id="closeButton" title="Close (Esc)">×</div>
+      <div class="panel-title">AIRIS Terminal</div>
+    </div>
     <textarea id="inputBox" placeholder="Type your command..."></textarea>
     <button id="askButton">⚙ Generate</button>
     <div id="output"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
     const panel = document.getElementById("panel");
     const inputBox = document.getElementById("inputBox");
@@ -141,9 +168,13 @@
     setTimeout(() => panel.classList.add("active"), 100);
 
     // Manual close
-    closeButton.addEventListener("click", () => {
+    function closePanel() {
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
+    }
+    closeButton.addEventListener("click", closePanel);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closePanel();
     });
 
     async function askAI() {
@@ -151,6 +182,7 @@
       if (!userText) return;
       appendOutput("> " + userText + "\n");
       inputBox.value = "";
+      askButton.disabled = true;
 
       const loader = document.createElement("div");
       loader.classList.add("loader");
@@ -171,21 +203,35 @@ Instruction: ${userText}
       `;
 
       try {
-        const res = await axios.post("http://localhost:11434/api/generate", {
-          model: "llava",
-          prompt: prompt,
-          stream: false
+        // AI goes through the main process / central AI configuration —
+        // no renderer-side endpoint or model hard-coding, works offline-safe.
+        const result = await window.electronAPI.aiConfig.chat({
+          messages: [{ role: "user", content: prompt }],
+          maxTokens: 200,
         });
 
         loader.remove();
 
-        const aiCommand = res.data?.response?.trim() || "🤖 No response from AI";
+        if (!result.ok) {
+          appendOutput("🔥 AI error: " + result.error + "\n");
+          return;
+        }
+
+        const aiCommand = (result.text || "").trim() || "🤖 No response from AI";
         appendOutput(aiCommand + "\n");
+
+        if (aiCommand.includes("Unable to generate command")) {
+          appendOutput("⚠️ Command not executed.\n");
+          return;
+        }
+
         runCommand(aiCommand);
 
       } catch (err) {
         loader.remove();
         appendOutput("🔥 AIRIS crashed: " + (err.message || err) + "\n");
+      } finally {
+        askButton.disabled = false;
       }
     }
 

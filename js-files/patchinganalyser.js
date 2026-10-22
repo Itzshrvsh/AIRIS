@@ -1,10 +1,11 @@
 const fs = require("fs");
-const axios = require("axios");
+const { generateText, ConfigError } = require("./aiConfig");
 
 /**
  * Generate a clean, ready-to-use patched version of a given code snippet
- * using a local Ollama / LLaVA model endpoint.
- * 
+ * using the centrally configured AI provider (see js-files/aiConfig.js —
+ * provider, base URL, key and model all come from AI Settings).
+ *
  * @param {string} code - The code snippet to patch.
  * @returns {Promise<string>} The cleaned patched code (no extra text).
  */
@@ -23,17 +24,9 @@ ${code.trim()}
 `;
 
   try {
-    const res = await axios.post(
-      "http://localhost:11434/api/generate",
-      { model: "llava", prompt, stream: false },
-      { timeout: 20000 } // prevent infinite waits
-    );
+    const res = await generateText(prompt, { maxTokens: 800 });
 
-    // Handle inconsistent API shapes (Ollama sometimes returns {data:{response:""}} or {response:""})
-    const raw = res?.data?.response || res?.data || "";
-    if (typeof raw !== "string" || !raw.trim()) return "";
-
-    let patchedCode = raw
+    let patchedCode = String(res || "")
       // Remove all fenced code markers (```js, ```python, etc.)
       .replace(/```[\s\S]*?```/g, match => match.replace(/```[a-z]*\n?|```/gi, ""))
       // Remove Markdown style or instruction prefaces
@@ -43,6 +36,8 @@ ${code.trim()}
       // Collapse double line breaks
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+
+    if (!patchedCode) return "";
 
     // Log asynchronously for traceability
     fs.promises

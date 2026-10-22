@@ -1,20 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
-import { exec } from 'child_process';
-import stringSimilarity from 'string-similarity';
+// core/memoryManager.js — AIRIS cloud context memory (CommonJS).
+//
+// Legacy note: this module previously ran the model with the `ollama` CLI
+// and embedded a Supabase key. It now runs through the central AI
+// configuration (js-files/aiConfig.js; provider/base URL/key/model from
+// AI Settings) and reads Supabase credentials from the local .env only.
+const { createClient } = require('@supabase/supabase-js');
+const stringSimilarity = require('string-similarity');
+const { generateText } = require('../js-files/aiConfig');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
-function runLLaVA(prompt) {
-  return new Promise((resolve) => {
-    let output = '';
-    const cmd = `ollama run llava "${prompt.replace(/"/g, '\\"')}"`;
-    const proc = exec(cmd);
-    proc.stdout.on('data', (chunk) => (output += chunk));
-    proc.on('close', () => resolve(output.trim()));
-  });
-}
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+    : null;
 
-export async function analyzeAndStore(userId, text) {
+async function analyzeAndStore(userId, text) {
   const analysisPrompt = `
 You are the AIRIS memory processor.
 Analyze this message and respond in JSON ONLY:
@@ -22,18 +23,23 @@ Analyze this message and respond in JSON ONLY:
   "sentiment": "positive | negative | neutral",
   "summary": "short one-line summary"
 }
-Message: "${text}"
+Message: "${String(text ?? '').slice(0, 500)}"
 `;
 
-  const output = await runLLaVA(analysisPrompt);
-  const jsonText = output.match(/\{[\s\S]*\}/)?.[0];
-  let sentiment = "neutral", summary = text.slice(0, 50);
+  const output = await generateText(analysisPrompt, { maxTokens: 80, feature: 'fast' });
+  const jsonText = String(output || '').match(/\{[\s\S]*\}/)?.[0];
+  let sentiment = "neutral", summary = String(text ?? '').slice(0, 50);
   try {
     const parsed = JSON.parse(jsonText);
     sentiment = parsed.sentiment;
     summary = parsed.summary;
-  } catch (e) {
-    console.warn("LLaVA returned non-JSON:", output);
+  } catch {
+    console.warn("Memory model returned non-JSON:", String(output || '').slice(0, 120));
+  }
+
+  if (!supabase) {
+    console.warn('core/memoryManager: Supabase not configured (.env) — analysis not stored.');
+    return { sentiment, summary };
   }
 
   await supabase.from('memories').insert({
@@ -46,20 +52,22 @@ Message: "${text}"
   return { sentiment, summary };
 }
 
-export async function fetchMemoryContext(userId, newInput, limit = 3) {
-  const { data } = await supabase.from('memories')
+async function fetchMemoryContext(userId, newInput, limit = 3) {
+  if (!supabase) return "";
+  const { data, error } = await supabase.from('memories')
     .select('*')
     .eq('user_id', userId)
     .order('timestamp', { ascending: false })
     .limit(50);
-
-  if (!data?.length) return "";
+  if (error || !data?.length) return "";
 
   const matches = data.map(m => ({
     ...m,
-    score: stringSimilarity.compareTwoStrings(newInput, m.input_text)
+    score: stringSimilarity.compareTwoStrings(String(newInput ?? ''), String(m.input_text ?? ''))
   })).sort((a, b) => b.score - a.score).slice(0, limit);
 
   const context = matches.map(m => `(${m.sentiment}) ${m.summary}`).join('\n- ');
   return context;
 }
+
+module.exports = { analyzeAndStore, fetchMemoryContext };

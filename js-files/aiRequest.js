@@ -1,44 +1,41 @@
-const axios = require("axios");
+// js-files/aiRequest.js — thin wrapper over the central aiConfig client.
+//
+// Kept as its own module (many call sites require it), but it no longer
+// hard-codes an endpoint or model: everything is resolved from
+// data/ai-config.json via js-files/aiConfig.js, i.e. the same provider,
+// base URL, key and model the user configures once in AI Settings.
+//
+// askAI(prompt, onChunk, options) intentionally keeps its historical
+// signature: prompt string, optional streaming callback, options merged
+// into the unified chat call (model, temperature, maxTokens, feature...).
 
-async function askAI(prompt, onChunk) {
+const { chat, ConfigError } = require("./aiConfig");
+
+async function askAI(prompt, onChunk, options = {}) {
+  if (typeof onChunk === "object" && onChunk !== null && !(options.onChunk)) {
+    // Older call sites may pass an options object as the 2nd argument.
+    options = onChunk;
+    onChunk = undefined;
+  }
+
   try {
-    const response = await axios({
-      method: "post",
-      url: "http://localhost:11434/api/generate",
-      data: {
-        model: "llava", // or mistral for faster text
-        prompt,
+    if (onChunk && typeof onChunk === "function") {
+      return await chat({
+        messages: [{ role: "user", content: String(prompt ?? "") }],
         stream: true,
-      },
-      responseType: "stream",
-    });
-
-    return new Promise((resolve) => {
-      let fullResponse = "";
-
-      response.data.on("data", (chunk) => {
-        const lines = chunk.toString().split("\n").filter(Boolean);
-        for (const line of lines) {
-          try {
-            const json = JSON.parse(line);
-            if (json.response) {
-              fullResponse += json.response;
-              if (onChunk) onChunk(json.response);
-            }
-          } catch {
-            // ignore partial JSON lines
-          }
-        }
+        onChunk,
+        ...options,
       });
-
-      const finalize = () => resolve(fullResponse);
-      response.data.on("end", finalize);
-      response.data.on("close", finalize);
-      response.data.on("error", finalize);
+    }
+    return await chat({
+      messages: [{ role: "user", content: String(prompt ?? "") }],
+      stream: false,
+      ...options,
     });
   } catch (err) {
-    console.error("[🔥 AI Error]:", err.message);
-    return "⚠️ AI unavailable.";
+    const message = err instanceof ConfigError ? err.message : (err && err.message) || String(err);
+    console.error("[🔥 AI Error]:", message);
+    return `⚠️ AI unavailable: ${message}`;
   }
 }
 

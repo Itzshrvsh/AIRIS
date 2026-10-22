@@ -5,8 +5,18 @@ out/
 *.log
 lib/
 Scripts/
+!scripts/
+!scripts/**
 include/
-test/
 Testfolder/
 AIRIS.exe/
 .vscode/
+__pycache__/
+*.pyc
+
+# secrets — never commit
+.env
+.env.*
+
+# AI provider config may contain API keys — keep it on this machine only
+data/ai-config.json
