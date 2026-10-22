@@ -6,6 +6,27 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+
+// Isolate the suite from the developer's real data/ai-config.json: pin a
+// known config file before loading the module (it reads CONFIG_FILE on load).
+const TEST_ENV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "airis-test-env-"));
+process.env.AIRIS_CONFIG_FILE = path.join(TEST_ENV_DIR, "ai-config.json");
+fs.writeFileSync(
+  process.env.AIRIS_CONFIG_FILE,
+  JSON.stringify({
+    provider: "openai-compatible",
+    baseURL: "http://localhost:11434/v1",
+    apiKey: "",
+    model: "llava",
+    featureModels: { vision: "", summarizer: "", fast: "", transcription: "whisper" },
+    status: { state: "unknown" },
+  }),
+  "utf8"
+);
+process.on("exit", () => {
+  try { fs.rmSync(TEST_ENV_DIR, { recursive: true, force: true }); } catch { /* best-effort */ }
+});
+
 const aiConfig = require("../js-files/aiConfig");
 
 const { ConfigError, normalizeBaseURL, buildEndpointURL, parseModelsResponse } = aiConfig;
@@ -332,6 +353,42 @@ function tempConfigFile() {
     assert.ok(err instanceof ConfigError && (err.code === "aborted" || err.code === "timeout"), `${err.code}`);
   });
 
+  // ── URL-only auto model (LM Studio) ───────────────────────────────────
+  await test("chat: blank model auto-uses the first model the server reports", async () => {
+    const calls = [];
+    aiConfig.setFetchImpl((url, opts = {}) => {
+      calls.push({ url: String(url), body: opts.body ? JSON.parse(opts.body) : null });
+      if (String(url).endsWith("/models")) {
+        return Promise.resolve(jsonResponse(200, { data: [{ id: "loaded-model" }] }));
+      }
+      return Promise.resolve(jsonResponse(200, { choices: [{ message: { content: "ok" } }] }));
+    });
+    const out = await aiConfig.chat({
+      messages: [{ role: "user", content: "hi" }],
+      config: { baseURL: "http://auto-model.test/v1", apiKey: "", model: "" },
+    });
+    assert.strictEqual(out, "ok");
+    const chatCall = calls.find((c) => c.url.endsWith("/chat/completions"));
+    assert.ok(chatCall, "chat endpoint called");
+    assert.strictEqual(chatCall.body.model, "loaded-model");
+  });
+  await test("chat: nothing loaded → actionable no_model error", async () => {
+    aiConfig.setFetchImpl((url) =>
+      Promise.resolve(
+        String(url).endsWith("/models") ? jsonResponse(200, { data: [] }) : jsonResponse(200, {})
+      )
+    );
+    await expectConfigError(
+      () =>
+        aiConfig.chat({
+          messages: [{ role: "user", content: "x" }],
+          config: { baseURL: "http://auto-empty.test/v1", apiKey: "", model: "" },
+        }),
+      "no_model",
+      "Load a model in LM Studio"
+    );
+  });
+
   // ── Vision helpers ────────────────────────────────────────────────────
   await test("generateVisionText: builds OpenAI image_url content part", async () => {
     let body = null;
@@ -370,6 +427,16 @@ function tempConfigFile() {
     assert.strictEqual(cfg.baseURL, "http://a/v1");
     assert.strictEqual(cfg.model, "m2");
     assert.strictEqual(cfg.customBookmark, "keep-me");
+    fs.unlinkSync(file);
+  });
+  await test("saveConfig: empty model persists as Auto (URL-only LM Studio)", () => {
+    const file = tempConfigFile();
+    const saved = aiConfig.saveConfig({ baseURL: "http://localhost:1234/v1", apiKey: "", model: "" }, file);
+    assert.strictEqual(saved.model, "");
+    assert.strictEqual(aiConfig.readConfig(file).model, "");
+    // A missing model key still inherits the default (backward compatible).
+    const merged = aiConfig.mergeWithDefaults({ baseURL: "http://localhost:1234/v1" });
+    assert.strictEqual(merged.model, aiConfig.DEFAULT_CONFIG.model);
     fs.unlinkSync(file);
   });
   await test("saveConfig: refuses to persist invalid base URL", async () => {

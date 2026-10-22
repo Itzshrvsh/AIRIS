@@ -90,9 +90,12 @@ Other hotkeys from earlier versions are described in `menu.html` / `notes.txt`; 
    ```bash
    npm start
    ```
-4. Open **drawer → ⚙️ AI Settings**, pick a preset (e.g. Ollama local), **Test Connection**, pick a model, **Save Settings**.
+4. Open **drawer → ⚙️ AI Settings** and point AIRIS at any OpenAI-compatible server:
+   * **LM Studio (local):** load a model, start the server (default `http://localhost:1234`), set the base URL to `http://localhost:1234/v1`, leave the model on **✨ Auto**, then **Test Connection → Save Settings**. The URL is all you need.
+   * **Ollama (local):** keep `http://localhost:11434/v1` and pick a model. The default preset runs `ollama pull llava` on startup.
+   * **Hosted / custom:** use any OpenAI-compatible `/v1` endpoint, with an API key if the provider requires one.
 
-> A local AI server (e.g. [Ollama](https://ollama.com/download) with a multimodal model such as `llava`) must be reachable at the configured endpoint. For the default Ollama preset, AIRIS runs `ollama pull llava` on startup.
+> AIRIS discovers the loaded model via `GET {baseURL}/models`, so leaving the model on **Auto** means "use whatever the server has loaded". For screen analysis, load a multimodal model and set it under *Advanced → Vision model*. See **[SHORTCUTS.md](SHORTCUTS.md)** (or press `Ctrl+Shift+H` in the app) for the shortcut sheet and setup guide.
 
 ---
 
@@ -116,6 +119,7 @@ Other hotkeys from earlier versions are described in `menu.html` / `notes.txt`; 
 * **Terminal:** drawer → *Terminal* → type an instruction; the generated command runs via the main process.
 * **YouTube Summary:** drawer → *YouTube Summary*.
 * **AI Settings:** drawer → *⚙️ AI Settings* — configure provider + model once for every feature.
+* **Shortcuts & Help:** drawer → *⌨ Shortcuts & Help*, the tray menu, or `Ctrl+Shift+H` — opens the in-app sheet (printable / save-as-PDF). Softcopy: [SHORTCUTS.md](SHORTCUTS.md) · [AIRIS-Shortcuts.pdf](AIRIS-Shortcuts.pdf).
 
 ---
 

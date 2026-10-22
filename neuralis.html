@@ -145,6 +145,10 @@
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
     }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hidePanel();
+    });
   
     // Helper: detect whether it's an automation command or AI query
     function isAutomationCommand(text) {

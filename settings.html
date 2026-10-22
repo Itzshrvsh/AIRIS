@@ -228,12 +228,17 @@
         <span id="statusMsg">Fill in the endpoint above, then test the connection.</span>
       </div>
 
-      <label for="modelSelect">Model (from the endpoint)</label>
-      <div class="row">
-        <select id="modelSelect"><option value="">— refresh models to populate —</option></select>
+      <div class="hint" style="margin:10px 0 12px; padding:9px 11px; border-radius:8px; background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.25); color:var(--text);">
+        <strong>LM Studio — URL only:</strong> paste <code>http://localhost:1234/v1</code> into the base URL above,
+        load a model in LM Studio, keep the model below on <em>✨ Auto</em>, then press <strong>Save Settings</strong>.
       </div>
 
-      <label for="modelManual">Or type a model ID manually (fallback when discovery is unavailable)</label>
+      <label for="modelSelect">Model (from the endpoint)</label>
+      <div class="row">
+        <select id="modelSelect"><option value="">✨ Auto — first model the server reports</option></select>
+      </div>
+
+      <label for="modelManual">Or type a model ID manually (optional — blank means auto-detect)</label>
       <div class="row">
         <input id="modelManual" type="text" spellcheck="false" placeholder="e.g. llava:13b / qwen2.5-7b-instruct" />
         <button id="useManualBtn" class="btn" type="button">Use this ID</button>
@@ -274,6 +279,7 @@
   </div>
 
   <div class="actions">
+    <button id="helpBtn" class="btn" type="button" title="Keyboard shortcuts &amp; setup guide (Ctrl+Shift+H)">⌨ Shortcuts &amp; Help</button>
     <span class="spacer" id="savedHint"></span>
     <button id="saveBtn" class="btn primary" type="button">💾 Save Settings</button>
   </div>
@@ -288,7 +294,7 @@
 
   const $ = (id) => document.getElementById(id);
   const els = {
-    close: $('closeBtn'), provider: $('providerSelect'), baseURL: $('baseURL'),
+    close: $('closeBtn'), help: $('helpBtn'), provider: $('providerSelect'), baseURL: $('baseURL'),
     apiKey: $('apiKey'), revealKey: $('revealKey'), testBtn: $('testBtn'),
     refreshBtn: $('refreshBtn'), status: $('statusLine'), statusMsg: $('statusMsg'),
     pill: $('connPill'), modelSelect: $('modelSelect'), modelManual: $('modelManual'),
@@ -331,11 +337,21 @@
 
   function fillModelSelect(models, selected) {
     els.modelSelect.innerHTML = '';
+    // Always offer "Auto" so a bare URL is a valid configuration (LM Studio
+    // serves whichever model is loaded).
+    const auto = document.createElement('option');
+    auto.value = '';
+    auto.textContent = '✨ Auto — first model the server reports (recommended for LM Studio)';
+    els.modelSelect.appendChild(auto);
+
     if (!models || !models.length) {
-      const o = document.createElement('option');
-      o.value = '';
-      o.textContent = '— no models from discovery —';
-      els.modelSelect.appendChild(o);
+      if (selected) {
+        const manual = document.createElement('option');
+        manual.value = selected;
+        manual.textContent = selected + ' (manual)';
+        els.modelSelect.appendChild(manual);
+        els.modelSelect.value = selected;
+      }
       return;
     }
     for (const id of models) {
@@ -344,7 +360,13 @@
       o.textContent = id;
       els.modelSelect.appendChild(o);
     }
-    if (selected && models.includes(selected)) els.modelSelect.value = selected;
+    if (selected && !models.includes(selected)) {
+      const manual = document.createElement('option');
+      manual.value = selected;
+      manual.textContent = selected + ' (manual)';
+      els.modelSelect.appendChild(manual);
+    }
+    els.modelSelect.value = selected || '';
   }
 
   function render(cfg) {
@@ -388,6 +410,10 @@
   });
 
   els.close.addEventListener('click', () => window.close());
+
+  els.help.addEventListener('click', () => {
+    if (window.electronAPI && window.electronAPI.openHelp) window.electronAPI.openHelp();
+  });
 
   els.testBtn.addEventListener('click', async () => {
     busy(true);
@@ -446,7 +472,9 @@
   });
 
   els.modelSelect.addEventListener('change', () => {
-    if (els.modelSelect.value) els.modelManual.value = els.modelSelect.value;
+    // Keep the manual field in sync; choosing Auto clears it so the saved
+    // config really means "let the server decide".
+    els.modelManual.value = els.modelSelect.value;
   });
 
   els.save.addEventListener('click', async () => {
@@ -457,10 +485,8 @@
     const timeoutRaw = els.timeoutSecs.value.trim();
 
     if (!baseURL) { setStatus('err', 'API base URL is required.'); return; }
-    if (!model) {
-      setStatus('err', 'No model selected. Refresh the list or type a model ID, then Save.');
-      return;
-    }
+    // No model is fine: the main process auto-uses the first model the
+    // server reports (LM Studio with a loaded model).
 
     busy(true);
     try {
@@ -482,7 +508,9 @@
       const result = await api().set(payload);
       if (result.ok) {
         els.savedHint.textContent = 'Saved at ' + new Date().toLocaleTimeString();
-        setStatus('ok', 'Configuration saved. All AIRIS features now use it.');
+        setStatus('ok', model
+          ? 'Configuration saved. All AIRIS features now use it.'
+          : 'Saved — model set to Auto. AIRIS will use the first model your server reports (keep one loaded in LM Studio).');
       } else {
         setStatus('err', 'Could not save: ' + (result.error || 'unknown error'));
       }

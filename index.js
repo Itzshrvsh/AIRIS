@@ -97,6 +97,40 @@ function createAISettingsWindow(focusOnly = true) {
   return aiSettingsWindow;
 }
 
+// ─── Shortcuts & Help window ─────────────────────────────────────────────
+let helpWindow = null;
+
+function createHelpWindow(focusOnly = true) {
+  if (helpWindow && !helpWindow.isDestroyed()) {
+    if (focusOnly) {
+      helpWindow.show();
+      helpWindow.focus();
+    }
+    return helpWindow;
+  }
+  helpWindow = new BrowserWindow({
+    width: 780,
+    height: 840,
+    minWidth: 560,
+    minHeight: 480,
+    title: "AIRIS — Shortcuts & Help",
+    backgroundColor: "#0b1220",
+    frame: false,
+    resizable: true,
+    fullscreenable: false,
+    maximizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, "./js-files/proload.js"),
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  helpWindow.setMenuBarVisibility(false);
+  helpWindow.loadFile("help.html");
+  helpWindow.on("closed", () => { helpWindow = null; });
+  return helpWindow;
+}
+
 // Central AI config IPC. The settings window is the only caller that
 // needs the raw API key; nobody should log it.
 ipcMain.handle("ai-config:get", () => aiConfig.describeForUI());
@@ -148,6 +182,26 @@ ipcMain.on("open-ai-settings", () => {
 
 ipcMain.on("close-ai-settings", () => {
   if (aiSettingsWindow && !aiSettingsWindow.isDestroyed()) aiSettingsWindow.close();
+});
+
+ipcMain.on("open-help", () => {
+  createHelpWindow(true);
+});
+
+// The drawer renderer pings while the pointer is inside it so the inactivity
+// timer doesn't close the menu while the user is choosing an action.
+ipcMain.on("menuui-activity", () => resetMenuAutoClose());
+
+// The drawer window is mostly transparent. Its renderer hit-tests the
+// trigger/drawer and asks us to toggle click-through, so the empty area does
+// not swallow clicks meant for whatever is behind the menu.
+ipcMain.on("menuui-ignore", (_event, ignore) => {
+  if (!menuuiwindow || menuuiwindow.isDestroyed()) return;
+  menuuiwindow.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
+});
+
+ipcMain.on("close-help", () => {
+  if (helpWindow && !helpWindow.isDestroyed()) helpWindow.close();
 });
 
 ipcMain.handle("ai:chat", async (_event, payload = {}) => {
@@ -337,6 +391,7 @@ function ensureTray() {
     const contextMenu = Menu.buildFromTemplate([
       { label: "Show App", click: () => ensureMainWindow() },
       { label: "AI Settings", click: () => createAISettingsWindow(true) },
+      { label: "Shortcuts & Help", click: () => createHelpWindow(true) },
       { label: "Quit", click: () => app.quit() },
     ]);
     tray.setToolTip("AIRIS");
@@ -396,10 +451,11 @@ function createSplash() {
 }
 function createTerminalWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const panelWidth = 460; // must match termi.html .panel width
   terminalWin = new BrowserWindow({
-    width: 700,
+    width: panelWidth,
     height: height,
-    x: width - 700,
+    x: width - panelWidth,
     y: 0,
     frame: false,
     transparent: true,
@@ -413,7 +469,10 @@ function createTerminalWindow() {
   });
   forceAlwaysOnTop(terminalWin);
   terminalWin.loadFile("termi.html");
-  terminalWin.on("closed", () => (terminalWin = null));
+  terminalWin.on("closed", () => {
+    terminalWin = null;
+    global.terminalActive = false;
+  });
   terminalWin.once("ready-to-show", () => {
     terminalWin.show();
     terminalWin.focus();
@@ -421,13 +480,14 @@ function createTerminalWindow() {
 }
 
 function openAIInputWindow() {
-  if (inputWindow) return inputWindow.focus();
+  if (inputWindow && !inputWindow.isDestroyed()) return inputWindow.focus();
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const panelWidth = 420; // must match ai_input.html .panel width
 
   inputWindow = new BrowserWindow({
-    width: 700,
+    width: panelWidth,
     height: height,
-    x: width - 700,
+    x: width - panelWidth,
     y: 0,
     frame: false,
     transparent: true,
@@ -441,13 +501,16 @@ function openAIInputWindow() {
   });
   forceAlwaysOnTop(inputWindow);
   inputWindow.loadFile("ai_input.html");
-  inputWindow.on("closed", () => (inputWindow = null));
+  inputWindow.on("closed", () => {
+    inputWindow = null;
+    global.chatbotActive = false;
+  });
 }
 
 
 function createMenuUI() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const winWidth = 400, winHeight = 600;
+  const winWidth = 240, winHeight = 600;
 
   if (menuuiwindow) {
     menuuiwindow.show();
@@ -483,41 +546,66 @@ function createMenuUI() {
     menuuiwindow.showInactive(); // show without stealing focus
   });
 
-  // Instead of closing, just hide
-  // Instead of closing, just hide
-  menuuiwindow.on('close', (e) => {
-    e.preventDefault();
-    if (menuuiwindow && !menuuiwindow.isDestroyed()) {
-      menuuiwindow.hide();
-    }
+  // Let close() actually destroy the window (the previous preventDefault
+  // turned every close into hide(), leaving orphan hidden windows behind
+  // on every toggle/auto-close). Recreate on demand instead.
+  menuuiwindow.on('closed', () => {
+    clearTimeout(autoCloseTimer);
+    menuuiwindow = null;
   });
-  
 
   return menuuiwindow;
 }
 
+/** Restart the drawer's inactivity timer; mouse activity keeps it open. */
+function resetMenuAutoClose(ms = 6000) {
+  clearTimeout(autoCloseTimer);
+  if (!menuuiwindow || menuuiwindow.isDestroyed()) return;
+  autoCloseTimer = setTimeout(() => {
+    if (menuuiwindow && !menuuiwindow.isDestroyed()) menuuiwindow.close();
+  }, ms);
+}
+
+
+// One toast window at a time. Earlier builds created a brand-new full-height
+// window for every message (so concurrent messages stacked on top of each
+// other), and sent the payload before the page could receive it. Reuse the
+// window and queue the latest message until the renderer is ready instead.
+let messageWindowReady = false;
+let pendingMessage = null;
 
 function showMessageWindow(msg, options = {}) {
-  const { updateExisting = false, autoClose = false } = options;
+  const payload = {
+    text: String(msg ?? ""),
+    sticky: Boolean(options && options.sticky),
+  };
 
-  if (messageWindow && !messageWindow.isDestroyed() && updateExisting) {
-    messageWindow.webContents.send('display-message', msg);
-    return;
+  if (messageWindow && !messageWindow.isDestroyed()) {
+    if (messageWindowReady) {
+      messageWindow.webContents.send('display-message', payload);
+    } else {
+      pendingMessage = payload;
+    }
+    if (!messageWindow.isVisible()) messageWindow.showInactive();
+    return messageWindow;
   }
 
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const windowWidth = 600, windowHeight = height;
+  const windowWidth = 600;
 
-  messageWindow = new BrowserWindow({
+  messageWindowReady = false;
+  pendingMessage = payload;
+
+  const win = new BrowserWindow({
     width: windowWidth,
-    height: windowHeight,
+    height,
     x: width - windowWidth,
     y: 0,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    focusable: false,          // click-through
+    focusable: true,           // click-through until hovered; then scrollable
     hasShadow: true,
     webPreferences: {
       preload: path.join(__dirname, "./js-files/proload.js"),
@@ -525,21 +613,35 @@ function showMessageWindow(msg, options = {}) {
       contextIsolation: false,
     },
   });
-  forceAlwaysOnTop(messageWindow);
-  messageWindow.setIgnoreMouseEvents(true); // click-through
-  messageWindow.setAlwaysOnTop(true, 'screen-saver');
-  messageWindow.loadFile("messagewin.html");
+  messageWindow = win;
+  forceAlwaysOnTop(win);
+  // Let mouse moves through so the renderer can detect hovering the toast;
+  // it asks us to disable click-through while the pointer is over the box.
+  win.setIgnoreMouseEvents(true, { forward: true });
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.loadFile("messagewin.html");
 
-  messageWindow.once('ready-to-show', () => {
-    messageWindow.showInactive();
-    messageWindow.webContents.send('display-message', msg);
-
-    if (autoClose) {
-      setTimeout(() => messageWindow.close(), 8000);
+  win.webContents.once('did-finish-load', () => {
+    if (win.isDestroyed()) return;
+    messageWindowReady = true;
+    if (pendingMessage !== null) {
+      win.webContents.send('display-message', pendingMessage);
+      pendingMessage = null;
     }
   });
 
-  messageWindow.on("closed", () => messageWindow = null);
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.showInactive();
+  });
+
+  win.on("closed", () => {
+    if (messageWindow !== win) return;
+    messageWindow = null;
+    messageWindowReady = false;
+    pendingMessage = null;
+  });
+
+  return win;
 }
 
 
@@ -990,14 +1092,16 @@ ipcMain.on("settings-updated", (event, newSettings) => {
 
 ipcMain.handle('analyze-screen', async () => {
   try {
-    const userInput = await analyzeScreen();
-    const finalPrompt = `${systemInstructions}\n\nUser: ${userInput}\nAssistant:`;
-    const response = await askAI(finalPrompt);
-    showMessageWindow(response);
-    return response;
+    // analyzeScreen() already sends the screenshot to the configured vision
+    // model. The old code then sent its answer through askAI() again, which
+    // doubled the latency/cost and often mangled the description.
+    showMessageWindow("📸 Capturing and analyzing your screen…", { sticky: true });
+    const analysis = await analyzeScreen();
+    showMessageWindow(analysis);
+    return analysis;
   } catch (err) {
     console.error("[❌ analyze-screen] Error:", err.message);
-    showMessageWindow("⚠️ Couldn't analyze screen.");
+    showMessageWindow("⚠️ Couldn't analyze screen. Check AI Settings and try again.");
     return "Error";
   }
 });
@@ -1023,6 +1127,14 @@ ipcMain.on('ignore-mouse-events', () => {
 ipcMain.on('show-sentiment-message', (event, message) => {
   showMessageWindow(message); // This stays globally active, always listening
 });
+
+// Same click-through trick as the drawer: the toast is transparent except
+// for the card, so let the renderer enable mouse input only over the card.
+ipcMain.on("message-ignore", (_event, ignore) => {
+  if (!messageWindow || messageWindow.isDestroyed()) return;
+  messageWindow.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
+});
+
 ipcMain.on('menuwin' , () => {
   // Legacy launcher menu is retired; AI Settings is the supported entry
   // point. Keep this channel safe no-op so old messages don't crash.
@@ -1086,15 +1198,6 @@ ipcMain.handle("ask-da", async (event, message) => {
   return "AI response to: " + message;
 });
 
-ipcMain.on('allow-mouse-events', () => {
-  const win = BrowserWindow.getAllWindows()[0];
-  if (win) win.setIgnoreMouseEvents(false);
-});
-
-ipcMain.on('ignore-mouse-events', () => {
-  const win = BrowserWindow.getAllWindows()[0];
-  if (win) win.setIgnoreMouseEvents(true, { forward: true });
-});
 ipcMain.handle("brain-command", async (event, userInput) => {
   const lower = userInput.toLowerCase();
 
@@ -1255,7 +1358,7 @@ Assistant:
     return response;
   }
 
-  showMessageWindow("⚙️ Generating code snippet...");
+  showMessageWindow("⚙️ Generating code snippet...", { sticky: true });
 
   try {
     // You can plug your AI model or custom logic here
@@ -1310,7 +1413,13 @@ ipcMain.handle('show-memory', async () => {
 // Handle user choice from popup
 // Handle popup selections
 ipcMain.on('popup-choice', async (event, choice, userInput) => {
-  if (!storedText) return;
+  // The popup disables its buttons as soon as one is clicked, so silently
+  // returning here used to leave a permanently stuck, unresponsive popup.
+  if (!storedText || !storedText.trim()) {
+    showMessageWindow("✋ Highlight some text first, then try again.");
+    closePopup();
+    return;
+  }
 
   let finalText;
   if (choice === 'ask-ai') finalText = storedText;
@@ -1536,13 +1645,9 @@ app.whenReady().then(async () => {
   //   console.log(`Mouse smoothly moving to (${x}, ${y})`);
   // });
   
-  setInterval(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const pos = robot.getMousePos();
-      mainWindow.webContents.send('global-mouse', pos);
-      mainWindow.webContents.send('cursor-position', screen.getCursorScreenPoint());
-    }
-  }, 60);
+  // The transparent eyes window receives forwarded mousemove events, so the
+  // renderer tracks the cursor itself. The old 60ms robotjs polling loop
+  // below sent two IPC messages 16x/second that nothing listened to.
   // Roast loop every 2 minutes with 20% chance
     setInterval(async () => {
       if (Math.random() < 0.2) {
@@ -1563,26 +1668,13 @@ app.whenReady().then(async () => {
     }, 2 * 60 * 1000);
 
     
-    let autoCloseTimer = null;
-
     globalShortcut.register('Ctrl+Shift+Z', () => {
       if (menuuiwindow && !menuuiwindow.isDestroyed()) {
-        // If it's already open, close immediately
+        clearTimeout(autoCloseTimer);
         menuuiwindow.close();
-        menuuiwindow = null;
-        clearTimeout(autoCloseTimer);
       } else {
-        // Create and show the window
         menuuiwindow = createMenuUI();
-
-        // Automatically close after 10 seconds
-        clearTimeout(autoCloseTimer);
-        autoCloseTimer = setTimeout(() => {
-          if (menuuiwindow && !menuuiwindow.isDestroyed()) {
-            menuuiwindow.close();
-            menuuiwindow = null;
-          }
-        }, 4000); // 10 seconds = 10000 ms
+        resetMenuAutoClose();
       }
     });
     const keywordMap = {
@@ -1593,6 +1685,11 @@ app.whenReady().then(async () => {
       vscode: "Code" // Visual Studio Code
   };
     console.log('Shortcut registered: Ctrl+Shift+Z to toggle menu');
+
+    globalShortcut.register('Ctrl+Shift+H', () => {
+      createHelpWindow(true);
+    });
+    console.log('Shortcut registered: Ctrl+Shift+H to open Shortcuts & Help');
     // Launch app by fuzzy matching user input
     ipcMain.on("launch-app", (event, appName) => {
       if (!appName) return console.error("No app name provided");
@@ -1650,7 +1747,7 @@ app.whenReady().then(async () => {
                 return;
               }
           
-              showMessageWindow("🔍 Analyzing code for possible errors...");
+              showMessageWindow("🔍 Analyzing code for possible errors...", { sticky: true });
           
               // 3️⃣ Ask the configured AI for a short diagnostic
               const diagnosticPrompt = `
@@ -1805,17 +1902,17 @@ app.whenReady().then(async () => {
     
         case 'screenCapture':
           try {
+            // Vision calls can take several seconds: show immediate feedback in
+            // the toast, then update the same toast with the result.
+            showMessageWindow("📸 Capturing and analyzing your screen…", { sticky: true });
             const screenDescription = await analyzeScreen(); // now from screenObserver.js
-        
+
             if (screenDescription?.trim()) {
-              if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send("show-message", screenDescription.trim());
-              }
               showMessageWindow(screenDescription.trim());
             }
           } catch (err) {
             console.error("[Manual Roast Failed]:", err.message);
-            showMessageWindow("❌ Screen roast failed. Check logs.");
+            showMessageWindow("❌ Screen analysis failed. Check AI Settings → Test Connection.");
           }
           break;
     

@@ -116,6 +116,7 @@ const actions = [
   { name: 'Screen Capture', action: 'screenCapture' },
   { name: 'YouTube Summary', action: 'ytSummary' },
   { name: 'NEURALIS', action: 'neuralis' },
+  { name: '⌨ Shortcuts & Help', action: 'help', help: true },
   { name: '⚙️ AI Settings', action: 'aiSettings', settings: true }
 ];
 
@@ -132,6 +133,10 @@ function buildDrawer() {
     const activate = () => {
       if (act.settings) {
         ipcRenderer.send('open-ai-settings');
+        hideDrawer();
+      } else if (act.help) {
+        ipcRenderer.send('open-help');
+        hideDrawer();
       } else {
         ipcRenderer.send('menu-action', act.action);
         // Only hide drawer for non-chatbot actions
@@ -177,19 +182,58 @@ trigger.addEventListener('keydown', (e) => {
   }
 });
 
-// Hover behavior
+// Hover behavior + keep the main-process inactivity timer alive while the
+// pointer is over the trigger/drawer (otherwise the menu closes mid-click).
 let hoverTimeout;
+let activityPing = null;
+
+function startActivity() {
+  ipcRenderer.send('menuui-activity');
+  clearInterval(activityPing);
+  activityPing = setInterval(() => ipcRenderer.send('menuui-activity'), 3000);
+}
+function stopActivity() {
+  clearInterval(activityPing);
+  activityPing = null;
+}
+
 trigger.addEventListener('mouseenter', () => {
   clearTimeout(hoverTimeout);
+  startActivity();
+  showDrawer();
+});
+trigger.addEventListener('focus', () => {
+  startActivity();
   showDrawer();
 });
 trigger.addEventListener('mouseleave', () => {
+  stopActivity();
   hoverTimeout = setTimeout(hideDrawer, 250);
 });
-drawer.addEventListener('mouseenter', () => clearTimeout(hoverTimeout));
+drawer.addEventListener('mouseenter', () => {
+  clearTimeout(hoverTimeout);
+  startActivity();
+});
+drawer.addEventListener('focusin', startActivity);
 drawer.addEventListener('mouseleave', () => {
+  stopActivity();
   hoverTimeout = setTimeout(hideDrawer, 250);
 });
+
+// Let clicks pass through the transparent parts of the drawer window. The
+// window stays interactive while the pointer is over the trigger or drawer.
+let lastClickThrough = false;
+function setClickThrough(ignore) {
+  if (ignore === lastClickThrough) return;
+  lastClickThrough = ignore;
+  ipcRenderer.send('menuui-ignore', ignore);
+}
+document.addEventListener('mousemove', (e) => {
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const overUi = Boolean(el && el.closest('#trigger, #drawer'));
+  setClickThrough(!overUi);
+});
+document.addEventListener('mouseleave', () => setClickThrough(true));
 </script>
 </body>
 </html>

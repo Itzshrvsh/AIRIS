@@ -4,13 +4,16 @@
 <meta charset="UTF-8">
 <title>AI Popup</title>
 <style>
+  html, body { width: 100%; height: 100%; }
   body {
     margin: 0;
+    box-sizing: border-box;
     background: rgba(30,30,32,0.95);
     color: white;
     font-family: Roboto, sans-serif;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     padding: 10px;
     border-radius: 12px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.4);
@@ -95,6 +98,11 @@ sendBtn.addEventListener('click', () => {
 
 queryInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendBtn.click();
+});
+
+// Esc dismisses the popup, including while an AI request is in flight.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') window.close();
 });
 </script>
 </body>

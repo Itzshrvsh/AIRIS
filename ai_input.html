@@ -21,6 +21,7 @@
       right: -420px; /* hidden initially */
       width: 420px;
       height: 100%;
+      box-sizing: border-box;
       background: rgba(20, 20, 20, 0.85);
       backdrop-filter: blur(12px);
       box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
@@ -30,6 +31,17 @@
       justify-content: center;
       gap: 12px;
       transition: right 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .panel-title {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #8fc7ff;
+      opacity: 0.85;
     }
 
     .panel.active {
@@ -54,6 +66,27 @@
     #inputBox:focus {
       box-shadow: 0 0 10px rgba(0, 160, 255, 0.6);
       border: 1px solid #0af;
+    }
+
+    #closeButton {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 18px;
+      line-height: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #closeButton:hover {
+      background: rgba(248, 113, 113, 0.9);
+      transform: scale(1.08);
     }
 
     #askButton {
@@ -90,6 +123,8 @@
 </head>
 <body>
   <div class="panel" id="panel">
+    <div class="panel-title">AIRIS Chatbot</div>
+    <div id="closeButton" title="Close (Esc)" role="button" aria-label="Close">×</div>
     <textarea id="inputBox" placeholder="Type your command..."></textarea>
     <button id="askButton">🚀 Ask AIRIS</button>
     <div id="loader"></div>
@@ -100,6 +135,7 @@
     const panel = document.getElementById('panel');
     const inputBox = document.getElementById('inputBox');
     const askButton = document.getElementById('askButton');
+    const closeButton = document.getElementById('closeButton');
     const loader = document.getElementById('loader');
     const statusText = document.createElement('p');
     statusText.id = 'statusText';
@@ -109,6 +145,16 @@
 
     // Slide in on load
     setTimeout(() => panel.classList.add('active'), 80);
+
+    function closePanel() {
+      panel.classList.remove('active');
+      setTimeout(() => window.close(), 400);
+    }
+
+    closeButton.addEventListener('click', closePanel);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePanel();
+    });
 
     askButton.addEventListener('click', handleSend);
     inputBox.addEventListener('keydown', (e) => {
@@ -132,8 +178,7 @@
         ipcRenderer.send('show-sentiment-message', response);
 
         // Slide out and close
-        panel.classList.remove('active');
-        setTimeout(() => window.close(), 400);
+        closePanel();
 
       } catch (err) {
         console.error('AIRIS Error:', err);

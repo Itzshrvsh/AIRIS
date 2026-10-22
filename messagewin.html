@@ -91,6 +91,10 @@
       background: #0af;
       animation: shrink 8s linear forwards;
     }
+
+    #message-box.paused #progress-fill {
+      animation-play-state: paused;
+    }
   
     @keyframes shrink {
       from { width: 100%; }
@@ -110,13 +114,21 @@
   </div>
 
   <script>
-    const { ipcRenderer, clipboard } = require('electron');
+    const { ipcRenderer } = require('electron');
     const box = document.getElementById('message-box');
     const textEl = document.getElementById('message-text');
+    const progressBar = document.getElementById('progress-bar');
     const progressFill = document.getElementById('progress-fill');
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     let flowId = 0; // generation counter — only the newest message may close
+    let lastClickThrough = null;
+
+    function setClickThrough(ignore) {
+      if (ignore === lastClickThrough) return;
+      lastClickThrough = ignore;
+      ipcRenderer.send('message-ignore', ignore);
+    }
 
     function adjustHeight() {
       // Let it grow naturally up to 80% of screen height
@@ -131,27 +143,54 @@
       }
     }
 
-    function restartProgress() {
-      // Restart the shrinking bar for the freshest message
+    function restartProgress(ms = 8000) {
+      // Restart the shrinking bar for the freshest message. All animation
+      // longhands are set inline so duration and pause state stay in sync
+      // with the JS countdown (a stylesheet shorthand would override them).
       const p = progressFill;
       p.style.animation = 'none';
       void p.offsetWidth; // reflow to restart keyframes
-      p.style.animation = '';
+      p.style.animation = `shrink ${ms}ms linear forwards`;
+      p.style.animationPlayState = box.classList.contains('paused') ? 'paused' : 'running';
     }
 
-    async function displayMessageFlow(msg) {
+    async function displayMessageFlow(payload) {
+      const sticky = Boolean(payload && typeof payload === "object" && payload.sticky);
+      const msg = String(
+        payload && typeof payload === "object" ? (payload.text ?? "") : (payload ?? "")
+      );
       const myFlow = ++flowId;
       textEl.textContent = msg;
       adjustHeight();
-      restartProgress();
-  
+
+      // Long answers need longer than 8 s. Hovering pauses the countdown
+      // (and the progress bar), so the user can scroll/copy at their pace.
+      const displayMs = Math.min(30000, Math.max(8000, msg.length * 25));
+      if (sticky) {
+        // Progress/status messages stay until the next message replaces them
+        // (the red dot or Esc can dismiss them manually).
+        progressBar.style.display = 'none';
+        progressFill.style.animation = 'none';
+      } else {
+        progressBar.style.display = '';
+        restartProgress(displayMs);
+      }
+
       box.classList.remove('closing');
       box.classList.add('show');
-  
-      clipboard.writeText(msg);
-  
-      await sleep(8000);
-      if (myFlow !== flowId) return; // a newer message took over — stay open
+
+      if (sticky) return;
+
+      let remaining = displayMs;
+      let lastTick = Date.now();
+      while (remaining > 0) {
+        await sleep(100);
+        if (myFlow !== flowId) return; // a newer message took over — stay open
+        const now = Date.now();
+        if (!box.classList.contains('paused')) remaining -= now - lastTick;
+        lastTick = now;
+      }
+
       box.classList.remove('show');
       box.classList.add('closing');
       await sleep(1000);
@@ -162,14 +201,49 @@
     ipcRenderer.on('display-message', async (_, msg) => {
       await displayMessageFlow(msg);
     });
+
+    // Enable interaction (scrollbar, text selection) only while the pointer
+    // is over the visible toast; the rest of this full-height window remains
+    // click-through.
+    document.addEventListener('mousemove', (e) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const overToast = Boolean(el && el.closest('#message-box'));
+      setClickThrough(!overToast);
+    });
+    document.addEventListener('mouseleave', () => setClickThrough(true));
+
+    box.addEventListener('mouseenter', () => {
+      setClickThrough(false);
+      box.classList.add('paused');
+      progressFill.style.animationPlayState = 'paused';
+    });
+    box.addEventListener('mouseleave', () => {
+      box.classList.remove('paused');
+      progressFill.style.animationPlayState = 'running';
+      setClickThrough(true);
+    });
   
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        box.classList.remove('show');
-        box.classList.add('closing');
-        setTimeout(() => window.close(), 600);
-      }
+      if (e.key === 'Escape') dismissToast();
     });
+
+    function dismissToast() {
+      const myFlow = ++flowId; // cancel any pending auto-close countdown
+      box.classList.remove('show');
+      box.classList.add('closing');
+      setTimeout(() => {
+        if (myFlow === flowId) window.close();
+      }, 600);
+    }
+
+    // The red "traffic light" dot dismisses the toast, including sticky
+    // progress messages that would otherwise stay until replaced.
+    const closeDot = document.querySelector('#window-controls .window-button');
+    if (closeDot) {
+      closeDot.title = 'Dismiss';
+      closeDot.style.cursor = 'pointer';
+      closeDot.addEventListener('click', dismissToast);
+    }
   </script>
 </body>
 </html>

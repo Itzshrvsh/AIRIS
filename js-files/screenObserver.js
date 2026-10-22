@@ -44,22 +44,32 @@ async function analyzeScreen({ saveScreenshot = false, retryCount = 1 } = {}) {
         `;
 
     console.log("[analyzeScreen] Step 4/5: Sending vision request to configured AI provider...");
+    const instruction = "Analyze this screenshot, detect the runtime/environment, explain the issue, and suggest fixes with code or commands if needed.";
     const output = await generateVisionText({
-      prompt: `Analyze this screenshot, detect the runtime/environment, explain the issue, and suggest fixes with code or commands if needed.`,
+      // Fold the instructions into the first (single) request so the model
+      // actually gets them; the old code computed systemPrompt but never
+      // sent it on the primary attempt.
+      prompt: `${systemPrompt}\n\nUser: ${instruction}`,
       imageBase64: base64Image,
       mimeType: "image/png",
+      maxTokens: 1200,
     }).catch(async (err) => {
-      // Fallback: if the message-style vision call is rejected, retry with
-      // the system prompt folded into the user turn (some servers only
-      // accept a single user message part).
-      if (err instanceof ConfigError) console.error("[analyzeScreen] Vision error:", err.message);
+      // A ConfigError (missing key, no model loaded, unsupported vision
+      // model) will not be fixed by changing the prompt, so fail fast
+      // instead of making the user wait through a second request.
+      if (err instanceof ConfigError) throw err;
+      console.log("[analyzeScreen] Retrying with a simplified vision request...");
       return generateVisionText({
-        prompt: `${systemPrompt}\n\nUser: Analyze this screenshot, detect the runtime/environment, explain the issue, and suggest fixes with code or commands if needed. Note: you will receive an attached screenshot.`,
+        prompt: instruction,
         imageBase64: base64Image,
         mimeType: "image/png",
-        maxTokens: 1200,
+        maxTokens: 900,
       });
     });
+
+    if (!output || !String(output).trim()) {
+      return "⚠️ The vision model returned an empty answer. Try a vision-capable model in AI Settings.";
+    }
 
     console.log(`[analyzeScreen] ✅ Response received`);
 
@@ -69,6 +79,11 @@ async function analyzeScreen({ saveScreenshot = false, retryCount = 1 } = {}) {
 
   } catch (err) {
     console.error("[analyzeScreen] ❌ ERROR:", err.message || err);
+
+    // Don't retry configuration problems: they need a settings change.
+    if (err instanceof ConfigError) {
+      return `❌ ${err.message}`;
+    }
 
     if (retryCount > 0) {
       console.log("[analyzeScreen] 🔄 Retrying screen analysis...");

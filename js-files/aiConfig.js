@@ -193,9 +193,10 @@ function mergeWithDefaults(fileData) {
   for (const key of ["provider", "baseURL", "apiKey"]) {
     if (typeof fileData[key] === "string") merged[key] = fileData[key];
   }
-  for (const key of ["model"]) {
-    if (typeof fileData[key] === "string" && fileData[key].trim()) merged[key] = fileData[key].trim();
-  }
+  // An explicit empty string means "auto-detect the loaded model" (LM Studio
+  // and similar local servers expose whatever model is loaded); only a
+  // missing key falls back to the default model.
+  if (typeof fileData.model === "string") merged.model = fileData.model.trim();
   merged.timeoutMs = numberOr(fileData.timeoutMs, DEFAULT_CONFIG.timeoutMs);
   merged.temperature = numberOrNull(fileData.temperature);
   merged.maxTokens = numberOrNull(fileData.maxTokens);
@@ -252,7 +253,8 @@ function saveConfig(patch, file = CONFIG_FILE) {
 
   // Normalize before writing so a bad URL can never be persisted.
   next.baseURL = normalizeBaseURL(next.baseURL);
-  if (typeof next.model === "string") next.model = next.model.trim() || DEFAULT_CONFIG.model;
+  // Empty model is valid: it selects the auto-detect path at chat time.
+  if (typeof next.model === "string") next.model = next.model.trim();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}-${(_saveSeq += 1)}`;
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2), "utf8");
@@ -545,6 +547,60 @@ async function testConnection(overrides = {}) {
   }
 }
 
+// ─── Auto model discovery ────────────────────────────────────────────────
+// Local servers (LM Studio in particular) expose whichever model is loaded
+// at /v1/models. When the user leaves the model blank we pick the first
+// reported model, so "just the URL" is a valid configuration.
+const AUTO_MODEL_TTL_MS = 60 * 1000;
+const _autoModelCache = { baseURL: null, apiKey: null, model: null, at: 0 };
+
+/** Resolve the model to use when none is configured. Returns the first id
+ *  from {baseURL}/models (cached briefly to avoid a discovery round-trip on
+ *  every message) and throws an actionable ConfigError when the server has
+ *  nothing loaded. */
+async function detectLoadedModel(config) {
+  const baseURL = config.baseURL;
+  const apiKey = config.apiKey || "";
+  const now = Date.now();
+  if (
+    _autoModelCache.model &&
+    _autoModelCache.baseURL === baseURL &&
+    _autoModelCache.apiKey === apiKey &&
+    now - _autoModelCache.at < AUTO_MODEL_TTL_MS
+  ) {
+    return _autoModelCache.model;
+  }
+
+  let models;
+  try {
+    models = await listModels({
+      baseURL,
+      apiKey,
+      timeoutMs: Math.min(config.timeoutMs || DEFAULT_CONFIG.timeoutMs, 15000),
+    });
+  } catch (err) {
+    if (err instanceof ConfigError && err.code === "models_empty") {
+      throw new ConfigError(
+        "No model is loaded on the AI server. Load a model in LM Studio (or type a model ID in AI Settings), then retry.",
+        { code: "no_model" }
+      );
+    }
+    throw err;
+  }
+  if (!models || !models.length) {
+    throw new ConfigError(
+      "No model is loaded on the AI server. Load a model in LM Studio (or type a model ID in AI Settings), then retry.",
+      { code: "no_model" }
+    );
+  }
+
+  _autoModelCache.baseURL = baseURL;
+  _autoModelCache.apiKey = apiKey;
+  _autoModelCache.model = models[0];
+  _autoModelCache.at = now;
+  return models[0];
+}
+
 /**
  * POST {baseURL}/chat/completions (OpenAI format).
  *  messages: [{role, content<string|array-of-parts>}]
@@ -561,11 +617,11 @@ async function chat({ messages, model, stream = false, onChunk, temperature, max
   let config = partialOverride && typeof partialOverride === "object"
     ? mergeWithDefaults({ ...getActiveConfig(), ...partialOverride })
     : getActiveConfig();
-  const resolved = model || (feature ? resolveFeatureModel(feature, config) : config.model);
+  let resolved = model || (feature ? resolveFeatureModel(feature, config) : config.model);
   if (!resolved || !String(resolved).trim()) {
-    throw new ConfigError("No model selected. Open AI Settings and choose or type a model id.", {
-      code: "no_model",
-    });
+    // No model configured (e.g. LM Studio with "Auto"): use the model the
+    // server currently has loaded so a bare URL is enough to get going.
+    resolved = await detectLoadedModel(config);
   }
   const url = buildEndpointURL(config.baseURL, "/chat/completions");
   const body = { model: resolved.trim(), messages: messages || [], stream: Boolean(stream) };
@@ -783,6 +839,7 @@ module.exports = {
   // operations
   listModels,
   testConnection,
+  detectLoadedModel,
   chat,
   generateText,
   generateVisionText,

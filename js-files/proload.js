@@ -1,9 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Single exposure! Registering `electronAPI` twice throws
-// "Failed to execute 'exposeInMainWorld'" and kills the whole preload,
-// so every method lives in ONE object now.
-contextBridge.exposeInMainWorld('electronAPI', {
+// Every method lives in ONE object: registering `electronAPI` twice throws
+// "Failed to execute 'exposeInMainWorld'" and kills the whole preload.
+const electronAPI = {
   // messaging / settings
   onForceClose: (callback) => ipcRenderer.on('force-close-box', callback),
   onMessage: (callback) => ipcRenderer.on('display-message', (_, data) => callback(data)),
@@ -37,10 +36,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   openAISettings: () => ipcRenderer.send("open-ai-settings"),
   closeAISettings: () => ipcRenderer.send("close-ai-settings"),
-});
+  openHelp: () => ipcRenderer.send("open-help"),
+  closeHelp: () => ipcRenderer.send("close-help"),
+};
 
-contextBridge.exposeInMainWorld('AIRIS', {
+const airisAPI = {
   invokeInput: () => ipcRenderer.invoke('show-automate-input'),
   sendInstruction: (instr) => ipcRenderer.send('send-to-python', instr),
   onPythonResponse: (callback) => ipcRenderer.on('python-response', (e, msg) => callback(msg))
-});
+};
+
+// contextBridge only works when contextIsolation is enabled. AIRIS windows
+// currently run with contextIsolation disabled (nodeIntegration on), so fall
+// back to assigning the same objects on the page's global object.
+if (process.contextIsolated) {
+  contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+  contextBridge.exposeInMainWorld('AIRIS', airisAPI);
+} else {
+  window.electronAPI = electronAPI;
+  window.AIRIS = airisAPI;
+}

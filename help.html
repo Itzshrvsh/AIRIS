@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AIRIS — Shortcuts &amp; Help</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: rgba(20, 30, 48, 0.85);
+    --border: rgba(140, 170, 220, 0.18);
+    --text: #e8f0fb;
+    --muted: #9db1cc;
+    --accent: #06b6d4;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+  }
+  body { display: flex; flex-direction: column; }
+
+  /* window chrome */
+  #titlebar {
+    flex: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(30, 43, 66, 0.65), rgba(15, 22, 38, 0.9));
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  #titlebar .title { font-weight: 600; letter-spacing: 0.3px; display: flex; gap: 8px; align-items: center; }
+  #titlebar .title .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  #titlebar .actions { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+  #titlebar button {
+    border: none; border-radius: 6px; cursor: pointer; font-size: 12.5px;
+    background: rgba(255,255,255,0.07); color: var(--text); padding: 6px 10px;
+  }
+  #titlebar button:hover { background: rgba(255,255,255,0.16); }
+  #titlebar #closeBtn { width: 30px; height: 26px; padding: 0; font-size: 13px; }
+  #titlebar #closeBtn:hover { background: #f87171; color: #fff; }
+
+  #scroller { flex: 1 1 auto; overflow-y: auto; padding: 20px 22px 30px; }
+  #scroller::-webkit-scrollbar { width: 10px; }
+  #scroller::-webkit-scrollbar-thumb { background: rgba(140,170,220,0.25); border-radius: 8px; }
+
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 12.5px; line-height: 1.5; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 15px 17px; margin-bottom: 14px;
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.1px;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600;
+  }
+  .card h2 .emoji { text-transform: none; letter-spacing: 0; margin-right: 6px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(140,170,220,0.12); vertical-align: top; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  kbd {
+    display: inline-block; padding: 2px 7px; margin: 1px 2px;
+    border-radius: 6px; border: 1px solid rgba(140,170,220,0.35);
+    border-bottom-width: 2px; background: rgba(8, 12, 22, 0.8);
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; color: #dff6ff;
+  }
+  code {
+    background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(140,170,220,0.15);
+    border-radius: 5px; padding: 1px 5px; font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 12px; color: #a5f3fc;
+  }
+  .desc { color: var(--text); line-height: 1.45; }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 8px; }
+  .note strong { color: var(--text); }
+  .tag {
+    display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
+    border: 1px solid rgba(6,182,212,0.4); color: var(--accent); margin-left: 6px;
+  }
+
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin: 7px 0; line-height: 1.5; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  ul li { margin: 5px 0; line-height: 1.45; }
+
+  .callout {
+    border: 1px solid rgba(6,182,212,0.25); background: rgba(6,182,212,0.08);
+    border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.55;
+  }
+  .callout.warn { border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+  .callout.ok { border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.08); }
+
+  .footer { color: var(--muted); font-size: 11.5px; text-align: center; margin-top: 18px; }
+
+  @media print {
+    :root { --bg: #ffffff; --panel: #ffffff; --text: #111827; --muted: #4b5563; --border: #d1d5db; --accent: #0e7490; }
+    #titlebar { display: none; }
+    #scroller { overflow: visible; padding: 0; }
+    body { background: #fff; }
+    .card { break-inside: avoid; border-color: #d1d5db; background: #fff; box-shadow: none; }
+    kbd, code { color: #111827; background: #f3f4f6; border-color: #9ca3af; }
+    .callout { background: #f0fdfa; border-color: #99f6e4; }
+  }
+</style>
+</head>
+<body>
+  <div id="titlebar">
+    <div class="title"><span class="dot"></span>AIRIS — Shortcuts &amp; Help</div>
+    <div class="actions">
+      <button id="printBtn" title="Print or save this sheet as a PDF">🖨 Print / Save as PDF</button>
+      <button id="closeBtn" title="Close" aria-label="Close help">✕</button>
+    </div>
+  </div>
+
+  <div id="scroller">
+    <h1>Shortcuts &amp; how AIRIS works</h1>
+    <p class="subtitle">
+      Everything in AIRIS is reachable from the floating drawer — the shortcuts below are optional accelerators.
+      This sheet is also saved as a softcopy in <code>SHORTCUTS.md</code> at the project root.
+    </p>
+
+    <div class="card">
+      <h2><span class="emoji">⌨️</span>Global shortcuts</h2>
+      <table>
+        <thead><tr><th>Keys</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></td>
+            <td class="desc">Open or close the AIRIS drawer. The drawer also auto-closes after a few seconds.</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd></td>
+            <td class="desc">Wink — the on-screen eyes blink once as a visual acknowledgment.</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></td>
+            <td class="desc">Open this Shortcuts &amp; Help sheet from anywhere.</td>
+          </tr>
+          <tr>
+            <td><kbd>Esc</kbd></td>
+            <td class="desc">Close the focused AIRIS window (Settings, Help, Chatbot, Terminal, popup).</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note"><strong>Tip:</strong> the eyes at the top of the screen follow your mouse and blink on their own — that is the assistant idling. Messages appear in the bottom-right; hover one to pause its timer and scroll or copy long answers.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🧠</span>Drawer actions</h2>
+      <p class="note" style="margin-top:0">
+        Hover the <strong>🧠 Start</strong> trigger in the bottom-left corner (or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) to open the drawer.
+      </p>
+      <table>
+        <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Highlight &amp; Explain</td>
+            <td class="desc">Select text in any app, then choose this — AIRIS copies the selection, opens a popup at your cursor and explains it.</td>
+          </tr>
+          <tr>
+            <td>Patch Content</td>
+            <td class="desc">Select code, then choose this — AIRIS cuts it, reviews the bug, generates a fix and pastes the corrected code back in place.</td>
+          </tr>
+          <tr>
+            <td>Chatbot</td>
+            <td class="desc">Toggles the floating chat window. <kbd>Enter</kbd> sends, <kbd>Shift</kbd>+<kbd>Enter</kbd> adds a new line.</td>
+          </tr>
+          <tr>
+            <td>Terminal</td>
+            <td class="desc">Toggles the AIRIS terminal. Type a natural-language instruction, press <kbd>Enter</kbd>, and the generated command runs.</td>
+          </tr>
+          <tr>
+            <td>Screen Capture</td>
+            <td class="desc">Captures the screen and shows the AI's analysis (the same engine as the periodic screen roast).</td>
+          </tr>
+          <tr>
+            <td>YouTube Summary</td>
+            <td class="desc">Downloads audio for the configured video, transcribes it and shows a summary.</td>
+          </tr>
+          <tr>
+            <td>NEURALIS</td>
+            <td class="desc">Opens the email/assistant window. <kbd>Enter</kbd> sends, <kbd>Shift</kbd>+<kbd>Enter</kbd> adds a line, the mic button toggles speech.</td>
+          </tr>
+          <tr>
+            <td>Shortcuts &amp; Help</td>
+            <td class="desc">Opens this sheet.</td>
+          </tr>
+          <tr>
+            <td>⚙️ AI Settings</td>
+            <td class="desc">Provider, endpoint URL, model and request options — one configuration shared by every feature.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🖱️</span>Tray menu</h2>
+      <p class="desc" style="margin:0">
+        Right-click the AIRIS icon in the system tray: <strong>Show App</strong>, <strong>AI Settings</strong>, <strong>Shortcuts &amp; Help</strong>, <strong>Quit</strong>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🔌</span>Connecting LM Studio (URL only)</h2>
+      <ol>
+        <li>In <strong>LM Studio</strong>, load a model, open the <strong>Developer</strong> tab and click <strong>Start Server</strong> (default <code>http://localhost:1234</code>).</li>
+        <li>In AIRIS, open <strong>drawer → ⚙️ AI Settings</strong>.</li>
+        <li>Set <strong>Provider</strong> to <em>LM Studio (local)</em> and keep the base URL <code>http://localhost:1234/v1</code>.</li>
+        <li>Leave the model on <strong>✨ Auto</strong> — AIRIS uses whichever model LM Studio has loaded.</li>
+        <li>Click <strong>🔌 Test Connection</strong>, then <strong>💾 Save Settings</strong>. Done.</li>
+      </ol>
+      <div class="callout" style="margin-top:12px">
+        Any OpenAI-compatible server works the same way: paste its base URL (usually ending in <code>/v1</code>) and
+        leave the model on Auto. AIRIS calls <code>GET {url}/models</code> to discover a model and
+        <code>POST {url}/chat/completions</code> for chat.
+      </div>
+      <div class="note"><strong>Screen analysis needs vision:</strong> load a multimodal model in LM Studio and set it under
+        <em>AI Settings → Advanced → Vision model</em>. Text models can still do chat, patching and summaries.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🩺</span>Quick troubleshooting</h2>
+      <table>
+        <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Connection refused</td>
+            <td class="desc">The AI server is not running, or the port is wrong. Start the LM Studio server and check the URL.</td>
+          </tr>
+          <tr>
+            <td>HTTP 404</td>
+            <td class="desc">The base URL is missing the version path — it should normally end in <code>/v1</code>.</td>
+          </tr>
+          <tr>
+            <td>First reply is slow</td>
+            <td class="desc">LM Studio loads the model on the first request. Subsequent messages are faster.</td>
+          </tr>
+          <tr>
+            <td>No model loaded</td>
+            <td class="desc">Load a model in LM Studio, or open AI Settings → Refresh Models and pick one explicitly.</td>
+          </tr>
+          <tr>
+            <td>Empty response / cut off</td>
+            <td class="desc">Raise <em>Advanced → Max tokens per request</em>, especially for reasoning models.</td>
+          </tr>
+          <tr>
+            <td>Vision call fails</td>
+            <td class="desc">The selected model has no image support. Load a vision model and set it as the Vision model.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">AIRIS — AI-Responsive Intelligent Shell · Shortcuts &amp; Help · softcopy: SHORTCUTS.md · AIRIS-Shortcuts.pdf</div>
+  </div>
+
+<script>
+  const closeHelp = () => {
+    if (window.electronAPI && window.electronAPI.closeHelp) window.electronAPI.closeHelp();
+    else window.close();
+  };
+  document.getElementById('closeBtn').addEventListener('click', closeHelp);
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(); });
+</script>
+</body>
+</html>

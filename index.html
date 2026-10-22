@@ -79,6 +79,7 @@
   </div>
 
   <script>
+    const { ipcRenderer } = require('electron');
     const leftPupil = document.getElementById('left-pupil');
     const rightPupil = document.getElementById('right-pupil');
     const pupils = [leftPupil, rightPupil];
@@ -123,6 +124,16 @@
       });
     }
     setInterval(blink, 4000 + Math.random() * 2000);
+
+    // Ctrl+Shift+N: one deliberate wink as visual acknowledgment. (The main
+    // process has always sent this event, but no listener existed, so the
+    // documented shortcut did nothing.)
+    ipcRenderer.on('shortcut-wink', () => {
+      const leftLid = document.querySelector('#left-eye .eyelid');
+      if (!leftLid) return;
+      leftLid.classList.add('closed');
+      setTimeout(() => leftLid.classList.remove('closed'), 360);
+    });
 
     // 🧩 Optional "speaking" hook: driven by the app itself instead of a
     // hard-coded external WebSocket (ws://localhost:8081 never had a server
