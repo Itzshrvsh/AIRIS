@@ -4,7 +4,7 @@
 const { spawn } = require("child_process");
 const path = require("path");
 
-const FILES = ["test/aiConfig.test.js"];
+const FILES = ["test/aiConfig.test.js", "test/automationPlan.test.js"];
 
 let failures = 0;
 async function run(file) {

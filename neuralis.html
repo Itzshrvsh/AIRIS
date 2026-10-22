@@ -123,6 +123,43 @@
       animation: pulse 1s infinite;
     }
 
+    #stopButton {
+      background: rgba(255, 255, 255, 0.12);
+      color: #f5f5f7;
+    }
+    #stopButton:hover:not(:disabled) { background: #ff453a; color: #fff; }
+    #stopButton:disabled { opacity: 0.4; cursor: default; }
+
+    /* Plan rule: one row per planned step, streamed by the main process */
+    #planList {
+      width: 80%;
+      max-height: 260px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px;
+      display: none;
+      font-size: 12.5px;
+      font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+      user-select: text;
+    }
+    #planList::-webkit-scrollbar { width: 8px; }
+    #planList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 6px; }
+    .plan-step {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 3px 4px;
+      color: #e5e5ea;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .plan-step .mark { flex: 0 0 auto; opacity: 0.9; }
+    .plan-step.pending .mark { color: #98989d; }
+    .plan-step.done { color: rgba(48, 209, 88, 0.95); }
+    .plan-step.fail { color: #ff453a; }
+
     @keyframes pulse {
       0% { transform: scale(1); }
       50% { transform: scale(1.1); }
@@ -133,12 +170,15 @@
 <body>
   <div class="panel" id="panel">
     <div id="closeButton">×</div>
-    <textarea id="inputBox" placeholder="Type your command..."></textarea>
+    <div class="panel-title">AIRIS Neuralis</div>
+    <textarea id="inputBox" placeholder="Tell NEURALIS what to do — an app, a site, or an email..."></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="askButton">🚀 Ask AIRIS</button>
+      <button id="askButton">🚀 Run</button>
       <button id="micButton">🎙️ Speak</button>
+      <button id="stopButton" disabled>🛑 Stop</button>
     </div>
     <p id="statusText"></p>
+    <div id="planList" aria-live="polite"></div>
   </div>
 
   <script>
@@ -146,9 +186,11 @@
     const panel = document.getElementById('panel');
     const inputBox = document.getElementById('inputBox');
     const askButton = document.getElementById('askButton');
-    const closeButton = document.getElementById("closeButton");
     const micButton = document.getElementById('micButton');
+    const stopButton = document.getElementById('stopButton');
+    const closeButton = document.getElementById("closeButton");
     const statusText = document.getElementById('statusText');
+    const planList = document.getElementById('planList');
   
     let isRecording = false;
   
@@ -162,6 +204,8 @@
 
     // Helper: smoothly hide and close panel
     function hidePanel() {
+      // Closing while a plan runs should also stop it.
+      if (!stopButton.disabled) ipcRenderer.send('neuralis-abort');
       panel.classList.remove("active");
       setTimeout(() => window.close(), 400);
     }
@@ -170,12 +214,35 @@
       if (e.key === "Escape") hidePanel();
     });
   
-    // Helper: detect whether it's an automation command or AI query
-    function isAutomationCommand(text) {
-      const automationKeywords = [
-        "open", "search", "click", "scroll", "navigate", "play", "close tab", "type", "download"
-      ];
-      return automationKeywords.some(word => text.toLowerCase().includes(word));
+    // ─── Plan-and-execute flow ───────────────────────────────────────
+    // The main process streams each planned step; one row per step.
+    function addStepRow(step, index) {
+      const row = document.createElement('div');
+      row.className = 'plan-step pending';
+      row.id = `plan-step-${index}`;
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = '⏳';
+      const label = document.createElement('span');
+      const arg = step.target ?? step.text ?? (step.keys ? step.keys.join('+') : step.command ?? step.key ?? `${step.ms ?? ""}ms`);
+      label.textContent = `${index + 1}. ${step.action}: ${String(arg).slice(0, 120)}`;
+      row.appendChild(mark);
+      row.appendChild(label);
+      planList.appendChild(row);
+      planList.scrollTop = planList.scrollHeight;
+    }
+
+    function updateStepRow(index, ok, detail, say = false) {
+      const row = document.getElementById(`plan-step-${index}`);
+      if (!row) return;
+      row.classList.remove('pending');
+      row.classList.add(ok ? 'done' : 'fail');
+      row.querySelector('.mark').textContent = ok ? '✅' : '❌';
+      if (say) {
+        // narration steps show their text inline
+        row.querySelector('span:last-child').textContent = `💬 ${detail || ''}`;
+      }
+      planList.scrollTop = planList.scrollHeight;
     }
   
     askButton.addEventListener("click", async () => {
@@ -184,33 +251,59 @@
 
       askButton.disabled = true;
       micButton.disabled = true;
+      stopButton.disabled = false;
+      inputBox.disabled = true;
+      statusText.textContent = "🧠 Planning...";
+      planList.innerHTML = "";
+      planList.style.display = "block";
+
+      // Live progress from the main process
+      const onPlan = (_e, plan) => {
+        (plan.steps || []).forEach((step, i) => addStepRow(step, i));
+      };
+      const onStep = (_e, r) => {
+        updateStepRow(r.index, r.ok, r.detail, r.ok && r.action === "say" && !!r.detail);
+        if (r.ok && r.action === "say" && r.detail) statusText.textContent = r.detail;
+        if (!r.ok) statusText.textContent = `❌ Stop: ${r.detail || "step failed"}`;
+      };
+      ipcRenderer.on('neuralis-plan', onPlan);
+      ipcRenderer.on('neuralis-step', onStep);
+  
       try {
-        statusText.textContent = "🧠 Processing...";
-        
-        const result = await ipcRenderer.invoke("Neuralis-ai", text);
+        const result = await ipcRenderer.invoke("Neuralis-plan", text);
 
-        if (result && typeof result === "object" && result.type === "error") {
-          statusText.textContent = "⚠️ " + (result.output || "Unknown error.");
-          askButton.disabled = false;
-          micButton.disabled = false;
-          return; // keep the panel open on errors
+        if (result && typeof result === "object" && !result.ok) {
+          if (result.aborted) {
+            statusText.textContent = "🛑 Automation stopped.";
+          } else {
+            statusText.textContent = "⚠️ " + (result.error || "Automation failed.");
+            planList.style.display = result.error?.includes("plan") ? "none" : planList.style.display;
+          }
+        } else {
+          statusText.textContent = "✅ Automation complete.";
         }
-
-        const responseText = result && typeof result === "object" ? result.output : String(result ?? "");
-        ipcRenderer.send("show-sentiment-message", responseText);
-        statusText.textContent = "✅ Response received — shown in the bottom-right toast. Type another command, or press Esc to close.";
-        // The panel stays open as a toggle now — re-enable the controls so
-        // the user can send another command without reopening.
-        askButton.disabled = false;
-        micButton.disabled = false;
-
+        // no auto-close: the panel is a toggle, user can run another command
       } catch (err) {
         console.error(err);
         statusText.textContent = "❌ Error executing command.";
         inputBox.value += `\n\n⚠️ Error: ${err.message || err}`;
+      } finally {
+        ipcRenderer.removeListener('neuralis-plan', onPlan);
+        ipcRenderer.removeListener('neuralis-step', onStep);
         askButton.disabled = false;
         micButton.disabled = false;
+        stopButton.disabled = true;
+        inputBox.disabled = false;
+        inputBox.focus();
+        inputBox.scrollTop = inputBox.scrollHeight;
       }
+    });
+
+    // 🛑 Stop mid-plan → next step is refused in the main process
+    stopButton.addEventListener("click", () => {
+      ipcRenderer.send('neuralis-abort');
+      stopButton.disabled = true;
+      statusText.textContent = "🛑 Stopping after current step...";
     });
 
   
@@ -241,7 +334,7 @@
         askButton.click();
       }
     });
-  
+   
     // Mic toggle
     micButton.addEventListener('click', async () => {
       try {

@@ -31,9 +31,9 @@ Hover the **🧠 Start** trigger in the bottom-left corner, or press `Ctrl+Shift
 | **Patch Content** | Select code, then choose this — AIRIS cuts it, reviews the bug, generates a fix and pastes the corrected code back in place. |
 | **Chatbot** | Toggles the floating chat window. `Enter` sends, `Shift+Enter` adds a new line. |
 | **Terminal** | Toggles the AIRIS terminal. Type a natural-language instruction, press `Enter`, and the generated command runs. |
-| **Screen Capture** | Captures the screen and shows the AI's analysis (same engine as the periodic screen roast). |
+| **Screen Capture** | Captures the screen and shows the AI's analysis, on demand. |
 | **YouTube Summary** | Downloads audio for the configured video, transcribes it and shows a summary. |
-| **NEURALIS** | Opens the email/assistant window. `Enter` sends, `Shift+Enter` adds a line, the mic button toggles speech. |
+| **NEURALIS** | Opens the desktop-automation panel. Describe a task ("open Spotify", "go to youtube.com", "email Bob about the release") and NEURALIS plans the steps, runs them one by one with live ✅/❌ progress, and a 🛑 Stop button aborts mid-plan. Mic button toggles speech. |
 | **⌨ Shortcuts & Help** | Opens this sheet. |
 | **⚙️ AI Settings** | Provider, endpoint URL, model and request options — one configuration shared by every feature. |
 

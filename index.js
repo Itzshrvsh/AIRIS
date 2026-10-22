@@ -5,7 +5,6 @@
 const { app, ipcMain, globalShortcut, clipboard, screen, shell, BrowserWindow, Tray, Menu, dialog} = require("electron");
 const path = require("path");
 const ytdl = require("@distube/ytdl-core");
-// const { summarizeYouTubeVideo } = require("./modules/ytSummarizer");
 const fs = require("fs");
 const { spawn, exec , execSync } = require("child_process");
 const util = require("util");
@@ -14,8 +13,6 @@ const util = require("util");
 const robot = require("./js-files/input").robot;
 const {summarizeYouTubeVideo} = require("./modules/transcriber");
 const { execFile } = require("child_process");
-
-const activeWindow = require("active-win");
 let storedText = '';
 let  splashWindow;
 let popupWindow;
@@ -54,7 +51,6 @@ const { askAI } = require("./js-files/aiRequest");
 const { analyzeScreen , setMainWindow } = require('./js-files/screenObserver');
 const { analyzeSentiment } = require("./js-files/sentimentAnalyzer");
 const { generateCodePatch } = require("./js-files/patchinganalyser");
-const { startAppWatcher } = require("./js-files/appWatcher");
 const { runYouTubeSummaryWithProgress } = require("./js-files/youtubeSummarizer");
 const { saveCodeToDesktop } = require("./js-files/fileGenerator");
 const { remember, recall, logChat } = require("./memoryManager");
@@ -897,116 +893,146 @@ async function getCaretCoords() {
 }
 
 // =====================================================
-// MAIN NEURALIS AI HANDLER
-// =====================================================
-ipcMain.handle("Neuralis-ai", async (event, userInput, emailDetails) => {
+// ============================================================================
+// NEURALIS — plan-and-execute desktop automation (replaces the old
+// classifier + hardcoded Gmail template flow)
+// ============================================================================
+
+const automationPlan = require("./js-files/automationPlan");
+const appLauncher = require("./js-files/appLauncher");
+
+const PLAN_STEPS_GUIDE = `
+You are AIRIS's desktop automation planner for Windows.
+Reply with ONLY JSON in this exact shape:
+{"steps":[{"action":"open","target":"chrome"},{"action":"wait","ms":2000}]}
+
+Allowed actions:
+- open    : {"action":"open","target":"spotify"}  (app name) OR {"action":"open","target":"https://mail.google.com"} (URL)
+- wait    : {"action":"wait","ms":2000}  (ms ≤ 20000)
+- hotkey  : {"action":"hotkey","keys":["control","t"]}
+- press   : {"action":"press","key":"enter"}
+- type    : {"action":"type","text":"..."}  (short text at current focus)
+- paste   : {"action":"paste","text":"..."} (clipboard + Ctrl+V — use for long/non-ASCII text)
+- say     : {"action":"say","text":"..."}   (narrate progress; no system effect)
+- command : {"action":"command","command":"dir C:\\\\"} (single cmd.exe command, no interactive apps)
+
+Rules:
+- Prefer opening a URL directly over typing into an address bar.
+- Keep plans small and single-purpose (≤ 12 steps). No destructive commands.
+- The user's current window keeps focus unless the plan opens one first.
+- For email in Gmail: open https://mail.google.com, wait, hotkey "c" (Compose),
+  type recipient, press tab (subject), type subject, press tab (body),
+  paste body, then say a summary. Do NOT press enter/send unless asked.
+- End email plans with say; never guess passwords or credit-card data.
+`;
+
+let neuralisAbortRequested = false;
+
+// The Start Menu scan hits the disk; do it once per session.
+let startMenuCache = null;
+function getStartMenuCandidates() {
+  if (!startMenuCache) {
+    const dirs = [
+      path.join(process.env.APPDATA || "", "Microsoft", "Windows", "Start Menu"),
+      path.join(process.env.ProgramData || "", "Microsoft", "Windows", "Start Menu"),
+    ];
+    startMenuCache = appLauncher.scanStartMenu(dirs);
+  }
+  return startMenuCache;
+}
+
+// Live primitive runners: connect the (testable) plan engine to the desktop.
+const planRunners = {
+  async open(step) {
+    const target = String(step.target ?? "").trim();
+    const norm = appLauncher.normalizeRequest(target);
+    const resolved = appLauncher.isHttpTarget(target)
+      ? null
+      : appLauncher.pickBestCandidate(norm, getStartMenuCandidates());
+    const cmd = appLauncher.buildLaunchCommand(target, resolved);
+    await new Promise((resolve, reject) => {
+      exec(cmd, { windowsHide: true }, (err) => (err ? reject(err) : resolve()));
+    });
+    return resolved ? `launched ${resolved.name}` : `launched ${target}`;
+  },
+
+  async wait(step) {
+    await delay(step.ms);
+    return `waited ${step.ms}ms`;
+  },
+
+  async hotkey(step) {
+    const [key, ...mods] = [...step.keys].reverse();
+    robot.keyTap(key, ...mods.reverse());
+    return `hotkey ${step.keys.join("+")}`;
+  },
+
+  async press(step) {
+    robot.keyTap(step.key);
+    return `pressed ${step.key}`;
+  },
+
+  async type(step) {
+    robot.typeString(step.text);
+    return `typed ${step.text.length} chars`;
+  },
+
+  async paste(step) {
+    clipboard.writeText(step.text);
+    await delay(100);
+    robot.keyTap("v", "control");
+    return `pasted ${step.text.length} chars`;
+  },
+
+  async say(step) {
+    return step.text;
+  },
+
+  async command(step) {
+    try {
+      const { stdout, stderr } = await execPromise(step.command);
+      const out = (stdout || stderr || "").trim();
+      return `${out.slice(0, 200)}${out.length > 200 ? "…" : ""}`;
+    } catch (err) {
+      const out = (err.stdout || err.stderr || err.message || "").trim();
+      throw new Error(out.slice(0, 200) || "command failed");
+    }
+  },
+};
+
+ipcMain.handle("Neuralis-plan", async (event, instruction) => {
+  const sender = event.sender;
+  const send = (channel, payload) => {
+    if (!sender.isDestroyed()) sender.send(channel, payload);
+  };
   try {
-    // 1️⃣ Ask the configured model for the app name
-    const prompt = `
-    You are AIRIS, a precise assistant for opening applications on Windows.
-    The user provides a command like "open Chrome" or "launch VS Code".
-    
-    INSTRUCTIONS:
-    - Respond with ONLY the exact official app name as it appears in the system (e.g.,"opera", "Google Chrome", "Visual Studio Code", "Spotify").
-    - DO NOT include numbers, bullet points, extra words, explanations, or punctuation.
-    - Return one app only.
-    - If unsure, respond with UNKNOWN_APP.
+    const prompt = `${PLAN_STEPS_GUIDE}\nUser instruction: ${String(instruction ?? "").trim()}\n`.trim();
+    const raw = await aiConfig.generateText(prompt, { maxTokens: 800, temperature: 0.2 });
+    const parsed = automationPlan.parsePlan(raw);
+    const validated = automationPlan.validatePlan(parsed);
+    send("neuralis-plan", { n: validated.n, steps: validated.steps });
 
-    User command: "${userInput}"
-    `.trim();
-
-    const aiResponse = (await aiConfig.generateText(prompt, { maxTokens: 24 }))?.trim() || "UNKNOWN_APP";
-    if (!aiResponse || aiResponse === "UNKNOWN_APP") {
-      return { type: "error", output: "Could not determine the app to launch." };
-    }
-
-    exec(`start "" "${aiResponse}"`);
-    console.log(`🚀 Launched: ${aiResponse}`);
-    await new Promise((r) => setTimeout(r, 2000)); // Wait for app to open
-
-    // 2️⃣ If email-related
-    if (
-      userInput.toLowerCase().includes("gmail") ||
-      userInput.toLowerCase().includes("email") ||
-      userInput.toLowerCase().includes("mail")
-    ) {
-      robot.keyTap("t", "control");
-      await new Promise((r) => setTimeout(r, 2000));
-      robot.typeString("gmail.com");
-      robot.keyTap("enter");
-      await new Promise((r) => setTimeout(r, 5000));
-
-      // 🧭 Get Compose Button
-      const composeCoords = await getCoords("get_compose_coords.py");
-      robot.moveMouse(composeCoords.x, composeCoords.y);
-      robot.mouseClick();
-      await new Promise((r) => setTimeout(r, 500));
-
-      // 3️⃣ Extract recipient email
-      const emailPrompt = `
-      Extract only the recipient's email address from this text:
-      "${userInput}"
-      Respond with the email only — no extra text.
-      `.trim();
-
-      const recipientEmail = (await aiConfig.generateText(emailPrompt, { maxTokens: 40 }))?.trim() || "UNKNOWN_EMAIL";
-      if (recipientEmail !== "UNKNOWN_EMAIL") {
-        clipboard.writeText(recipientEmail);
-        robot.keyTap('v', 'control');
-        robot.keyTap("enter");
-        await new Promise((r) => setTimeout(r, 300));
-      }
-
-      // 4️⃣ Generate subject
-      const subjectPrompt = `
-You are AIRIS, a precise AI assistant for email automation.
-Generate a concise subject line for the email.
-Input: "${userInput}"
-`.trim();
-
-      const emailSubject = (await aiConfig.generateText(subjectPrompt, { maxTokens: 40 }))?.trim() || "UNKNOWN_SUBJECT";
-
-      let subjectCoords;
-      if (emailSubject !== "UNKNOWN_SUBJECT") {
-        subjectCoords = await getCoords("get_subject_coords.py");
-        robot.moveMouse(subjectCoords.x, subjectCoords.y);
-        robot.mouseClick(); // focus subject field
-        clipboard.writeText(emailSubject);
-        robot.keyTap('v', 'control');
-        await new Promise(r => setTimeout(r, 200));
-
-        // ✅ Move slightly below to switch to body field
-        robot.moveMouseSmooth(subjectCoords.x, subjectCoords.y + 60); // ~60px below subject box
-        robot.mouseClick(); // focus body area
-        await new Promise(r => setTimeout(r, 200));
-      }
-
-      // 5️⃣ Generate body
-      const bodyPrompt = `
-You are AIRIS, a precise AI assistant for email automation.
-From this user input, write the email body clearly and professionally.
-Input: "${userInput}"
-`.trim();
-
-      const emailBody = (await aiConfig.generateText(bodyPrompt, { maxTokens: 500 }))?.trim() || "UNKNOWN_BODY";
-      if (emailBody !== "UNKNOWN_BODY") {
-        clipboard.writeText(emailBody);
-        robot.keyTap("v", "control");
-        await new Promise(r => setTimeout(r, 300));
-      }
-
-      // 6️⃣ Send email
-      const sendCoords = await getCoords("get_send_coords.py");
-      robot.moveMouse(sendCoords.x, sendCoords.y);
-      robot.mouseClick();
-    }
-
-    return { type: "app", output: `AIRIS launched: ${aiResponse}` };
+    neuralisAbortRequested = false;
+    const result = await automationPlan.executePlan(validated, {
+      runners: planRunners,
+      isAborted: () => neuralisAbortRequested,
+      onResult: (r) => send("neuralis-step", {
+        index: r.index,
+        action: r.step.action,
+        ok: r.ok,
+        detail: String(r.detail ?? "").slice(0, 200),
+      }),
+    });
+    return { ok: result.ok, aborted: result.aborted, results: result.results };
   } catch (err) {
-    console.error("AIRIS AI error:", err);
-    return { type: "error", output: `AIRIS encountered an error: ${err.message}` };
+    return { ok: false, error: err.message };
   }
 });
+
+ipcMain.on("neuralis-abort", () => {
+  neuralisAbortRequested = true;
+});
+
 let finalOutput = '';
 let pendingResolve = null;
 
@@ -1946,10 +1972,9 @@ app.whenReady().then(async () => {
     // Performance tweaks
     app.commandLine.appendSwitch('enable-transparent-visuals');
     app.commandLine.appendSwitch('disable-gpu-compositing');
-
-    // Background features. The main (eyes) window is created when the
-    // splash finishes — see createSplash()/ensureMainWindow().
-    startAppWatcher();
+    // The main (eyes) window is created when the splash finishes — see
+    // createSplash()/ensureMainWindow(). (The background app watcher that
+    // roasted app switches was removed: nothing listened to its messages.)
   } catch (err) {
     console.error("❌ app.whenReady() failed:", err.message);
   }
