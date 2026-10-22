@@ -1672,24 +1672,9 @@ app.whenReady().then(async () => {
   // The transparent eyes window receives forwarded mousemove events, so the
   // renderer tracks the cursor itself. The old 60ms robotjs polling loop
   // below sent two IPC messages 16x/second that nothing listened to.
-  // Roast loop every 2 minutes with 20% chance
-    setInterval(async () => {
-      if (Math.random() < 0.2) {
-        console.log("[🧠] Attempting roast screen analysis...");
-  
-        try {
-          const screenSummary = await analyzeScreen();
-          const roast = await analyzeSentiment(screenSummary);
-
-          if (roast?.trim()) {
-            mainWindow.webContents.send("show-message", roast.trim());
-            showMessageWindow(roast.trim());
-          }
-        } catch (err) {
-          console.error("[💥 Roast failed]:", err.message);
-        }
-      }
-    }, 2 * 60 * 1000);
+  // (The automatic "roast" loop — a screen capture + AI analysis every 2
+  // minutes — was removed on request. Screen analysis still exists via the
+  // manual drawer action: Screen Capture.)
 
     
     globalShortcut.register('Ctrl+Shift+Z', () => {
