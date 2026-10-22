@@ -8,15 +8,19 @@
   body {
     margin: 0;
     box-sizing: border-box;
-    background: rgba(30,30,32,0.95);
-    color: white;
-    font-family: Roboto, sans-serif;
+    background: rgba(28, 28, 30, 0.78);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    color: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 10px;
+    padding: 8px;
     border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
 
     /* Smooth fade + slight scale */
     transform: scale(0.95);
@@ -30,22 +34,40 @@
   }
 
   button {
-    margin: 5px 0;
+    margin: 2px 0;
     border: none;
-    padding: 6px 10px;
+    padding: 8px 10px;
     border-radius: 6px;
-    background: #007aff;
-    color: white;
+    background: transparent;
+    color: #f5f5f7;
+    font-size: 13px;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.15s ease;
+    text-align: center;
   }
-  button:hover { background: #0af; }
-  button:focus-visible { outline: 2px solid #7fd7ff; outline-offset: 1px; }
-  button:disabled { opacity: 0.6; cursor: default; }
+  button:hover { background: rgba(10, 132, 255, 0.85); color: #fff; }
+  button:focus-visible { outline: 2px solid rgba(10,132,255,0.8); outline-offset: -2px; }
+  button:disabled { opacity: 0.55; cursor: default; }
 
-  #inputBox { display: none; margin-top: 8px; }
-  input { width: 100%; padding: 5px; border-radius: 5px; border: none; outline: none; }
-  input:focus-visible { outline: 2px solid #7fd7ff; }
+  #inputBox { display: none; margin-top: 6px; }
+  input {
+    width: 100%; padding: 7px 9px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: #f5f5f7;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus {
+    border-color: rgba(10, 132, 255, 0.8);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
+  }
+  #sendBtn { background: #0a84ff; color: #fff; font-weight: 600; margin-top: 6px; }
+  #sendBtn:hover { background: #409cff; }
 </style>
 </head>
 <body>
